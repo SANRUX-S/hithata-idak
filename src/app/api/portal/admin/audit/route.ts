@@ -9,7 +9,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const auditEvents = listAdminAuditEvents(60);
+    const auditEvents = await listAdminAuditEvents(60);
     return NextResponse.json({ auditEvents });
   } catch (error) {
     console.error("Audit log error:", error);

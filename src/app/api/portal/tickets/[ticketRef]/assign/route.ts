@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -34,17 +34,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     // Re-read after parsing the body so another claim cannot be silently overwritten.
-    const latestTicket = getTicketByRef(ticketRef)!;
+    const latestTicket = (await getTicketByRef(ticketRef))!;
     if (latestTicket.status === "closed") return NextResponse.json({ error: "This conversation is closed." }, { status: 400 });
     if (supporter.role === "supporter" && latestTicket.assigned_volunteer_id && latestTicket.assigned_volunteer_id !== supporter.id) {
       return NextResponse.json({ error: "This conversation is already assigned to another supporter." }, { status: 409 });
     }
-    const target = listVolunteers().find((volunteer) => volunteer.id === targetVolunteerId && volunteer.is_active && volunteer.is_approved);
+    const target = (await listVolunteers()).find((volunteer) => volunteer.id === targetVolunteerId && volunteer.is_active && volunteer.is_approved);
     if (!target) return NextResponse.json({ error: "Choose an active, approved supporter." }, { status: 400 });
     if (latestTicket.assigned_volunteer_id === targetVolunteerId) return NextResponse.json({ ok: true });
 
-    assignTicket(ticket.id, targetVolunteerId, supporter.id);
-    logAdminAudit(supporter.id, "ASSIGN_TICKET", "ticket", ticket.id, `Assigned to ${targetVolunteerId}`);
+    await assignTicket(ticket.id, targetVolunteerId, supporter.id);
+    await logAdminAudit(supporter.id, "ASSIGN_TICKET", "ticket", ticket.id, `Assigned to ${targetVolunteerId}`);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -52,4 +52,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to assign ticket" }, { status: 500 });
   }
 }
-

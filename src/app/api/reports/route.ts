@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please provide a valid report description (minimum 10 characters)." }, { status: 400 });
     }
 
-    const reportId = createIncidentReport({
+    const reportId = await createIncidentReport({
       reportType: parsed.data.reportType,
       ticketRef: parsed.data.ticketRef,
       description: parsed.data.description,
@@ -35,4 +35,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to submit report" }, { status: 500 });
   }
 }
-

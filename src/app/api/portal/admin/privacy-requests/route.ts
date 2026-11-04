@@ -9,7 +9,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const requests = listPrivacyRequests();
+    const requests = await listPrivacyRequests();
     return NextResponse.json({ requests });
   } catch (error) {
     console.error("List privacy requests error:", error);

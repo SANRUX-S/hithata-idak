@@ -9,8 +9,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    touchVolunteerPresence(supporter.id);
-    const allTickets = listQueueTickets();
+    await touchVolunteerPresence(supporter.id);
+    const allTickets = await listQueueTickets();
 
     // If regular volunteer, return tickets assigned to them OR tickets waiting in the queue.
     // They cannot browse conversations assigned to other volunteers without supervisor role.

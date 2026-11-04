@@ -11,7 +11,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    requestConversationDeletion(ticket.id, ticket.ticket_ref);
+    await requestConversationDeletion(ticket.id, ticket.ticket_ref);
     return NextResponse.json({
       ok: true,
       message: "Data deletion requested. In accordance with privacy standards and Sri Lankan Personal Data Protection Act guidelines, your conversation content has been queued for immediate cryptographic shredding.",
@@ -21,4 +21,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to request deletion" }, { status: 500 });
   }
 }
-

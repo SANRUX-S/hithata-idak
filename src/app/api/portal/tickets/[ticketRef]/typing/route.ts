@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -33,4 +33,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to update typing indicator" }, { status: 500 });
   }
 }
-

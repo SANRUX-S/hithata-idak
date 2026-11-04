@@ -10,10 +10,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketI
     }
 
     const { ticketId } = await params;
-    const ticket = getTicketById(ticketId);
+    const ticket = await getTicketById(ticketId);
     if (!ticket) return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     if (!ticket.deletion_requested) return NextResponse.json({ error: "No deletion request exists for this conversation." }, { status: 400 });
-    processConversationDeletion(ticketId, supporter.id);
+    await processConversationDeletion(ticketId, supporter.id);
 
     return NextResponse.json({
       ok: true,
@@ -24,4 +24,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketI
     return NextResponse.json({ error: "Failed to process data deletion" }, { status: 500 });
   }
 }
-

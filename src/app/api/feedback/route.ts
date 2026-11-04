@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please enter your message." }, { status: 400 });
     }
 
-    const id = createUserFeedback({
+    const id = await createUserFeedback({
       feedbackType: parsed.data.feedbackType,
       rating: parsed.data.rating,
       message: parsed.data.message,
@@ -33,4 +33,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to submit feedback" }, { status: 500 });
   }
 }
-

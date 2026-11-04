@@ -17,7 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -32,13 +32,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     if (parsed.data.isPriority !== undefined) {
-      setPriorityReview(ticket.id, parsed.data.isPriority, parsed.data.notes);
-      logAdminAudit(supporter.id, "SET_PRIORITY", "ticket", ticket.id, `Priority: ${parsed.data.isPriority}`);
+      await setPriorityReview(ticket.id, parsed.data.isPriority, parsed.data.notes);
+      await logAdminAudit(supporter.id, "SET_PRIORITY", "ticket", ticket.id, `Priority: ${parsed.data.isPriority}`);
     }
 
     if (parsed.data.isSafetyFlagged !== undefined) {
-      setSafetyFlag(ticket.id, parsed.data.isSafetyFlagged, parsed.data.notes);
-      logAdminAudit(supporter.id, "SET_SAFETY_FLAG", "ticket", ticket.id, `Safety flag: ${parsed.data.isSafetyFlagged}`);
+      await setSafetyFlag(ticket.id, parsed.data.isSafetyFlagged, parsed.data.notes);
+      await logAdminAudit(supporter.id, "SET_SAFETY_FLAG", "ticket", ticket.id, `Safety flag: ${parsed.data.isSafetyFlagged}`);
     }
 
     return NextResponse.json({ ok: true });
@@ -47,4 +47,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to update flags" }, { status: 500 });
   }
 }
-

@@ -10,7 +10,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -19,8 +19,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
       return NextResponse.json({ error: "You can only return conversations assigned to you." }, { status: 403 });
     }
     if (ticket.status === "closed") return NextResponse.json({ error: "This conversation is closed." }, { status: 400 });
-    unassignTicket(ticket.id);
-    logAdminAudit(supporter.id, "UNASSIGN_TICKET", "ticket", ticket.id, "Ticket returned to queue");
+    await unassignTicket(ticket.id);
+    await logAdminAudit(supporter.id, "UNASSIGN_TICKET", "ticket", ticket.id, "Ticket returned to queue");
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -28,4 +28,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to return ticket to queue" }, { status: 500 });
   }
 }
-

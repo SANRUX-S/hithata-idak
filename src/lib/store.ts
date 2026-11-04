@@ -1,6 +1,5 @@
 import crypto from "crypto";
-import type { SQLInputValue } from "node:sqlite";
-import { db, withDatabaseTransaction } from "./db";
+import { dbAdapter } from "./db";
 import {
   generateTicketReference,
   generateRecoveryCode,
@@ -28,36 +27,35 @@ import {
 // TYPE-SAFE QUERY HELPERS
 // ==========================================
 
-function queryAll<T>(sql: string, ...params: SQLInputValue[]): T[] {
-  return (db.prepare(sql).all(...params) as unknown) as T[];
+async function queryAll<T>(sql: string, ...params: unknown[]): Promise<T[]> {
+  return dbAdapter.queryAll<T>(sql, params);
 }
 
-function queryGet<T>(sql: string, ...params: SQLInputValue[]): T | null {
-  const row = db.prepare(sql).get(...params);
-  return (row as unknown as T) || null;
+async function queryGet<T>(sql: string, ...params: unknown[]): Promise<T | null> {
+  return dbAdapter.queryGet<T>(sql, params);
 }
 
 // ==========================================
 // SYSTEM AVAILABILITY & SETTINGS
 // ==========================================
 
-export function getPlatformSetting(key: string): string | null {
-  const row = queryGet<{ value: string }>("SELECT value FROM platform_settings WHERE key = ?", key);
+export async function getPlatformSetting(key: string): Promise<string | null> {
+  const row = await queryGet<{ value: string }>("SELECT value FROM platform_settings WHERE key = ?", key);
   return row ? row.value : null;
 }
 
-export function updatePlatformSetting(key: string, value: string): void {
+export async function updatePlatformSetting(key: string, value: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-  `).run(key, value, now);
+  `, [key, value, now]);
 }
 
-export function getSystemAvailability(): SystemAvailability {
-  const manualStatus = getPlatformSetting("service_status") || "online";
-  const operatingHours = getPlatformSetting("operating_hours") || "8:00 AM - 10:00 PM IST (Sri Lanka Time)";
-  const pilotMode = getPlatformSetting("pilot_mode") === "true";
+export async function getSystemAvailability(): Promise<SystemAvailability> {
+  const manualStatus = (await getPlatformSetting("service_status")) || "online";
+  const operatingHours = (await getPlatformSetting("operating_hours")) || "8:00 AM - 10:00 PM IST (Sri Lanka Time)";
+  const pilotMode = (await getPlatformSetting("pilot_mode")) === "true";
   const presenceCutoff = new Date(Date.now() - 90_000).toISOString();
 
   if (manualStatus === "offline") {
@@ -71,7 +69,7 @@ export function getSystemAvailability(): SystemAvailability {
   }
 
   // Count active, approved volunteers currently online
-  const onlineRow = queryGet<{ count: number }>(`
+  const onlineRow = await queryGet<{ count: number | string }>(`
     SELECT COUNT(*) as count 
     FROM volunteer_availability va
     JOIN volunteers v ON va.volunteer_id = v.id
@@ -79,7 +77,7 @@ export function getSystemAvailability(): SystemAvailability {
   `, presenceCutoff);
 
   // Count active, approved volunteers currently busy
-  const busyRow = queryGet<{ count: number }>(`
+  const busyRow = await queryGet<{ count: number | string }>(`
     SELECT COUNT(*) as count 
     FROM volunteer_availability va
     JOIN volunteers v ON va.volunteer_id = v.id
@@ -87,13 +85,13 @@ export function getSystemAvailability(): SystemAvailability {
   `, presenceCutoff);
 
   // Count tickets waiting or active
-  const openTicketsRow = queryGet<{ count: number }>(`
+  const openTicketsRow = await queryGet<{ count: number | string }>(`
     SELECT COUNT(*) as count FROM support_tickets WHERE status IN ('waiting', 'assigned', 'active', 'awaiting_reply')
   `);
 
-  const onlineCount = onlineRow?.count || 0;
-  const busyCount = busyRow?.count || 0;
-  const openCount = openTicketsRow?.count || 0;
+  const onlineCount = Number(onlineRow?.count || 0);
+  const busyCount = Number(busyRow?.count || 0);
+  const openCount = Number(openTicketsRow?.count || 0);
 
   let computedStatus: "available" | "busy" | "offline" = "offline";
   if (onlineCount > 0) {
@@ -128,55 +126,55 @@ export interface CreateTicketResult {
   sessionToken: string;
 }
 
-export function createSupportTicket(params: CreateTicketParams): CreateTicketResult {
-  return withDatabaseTransaction(() => {
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
+export async function createSupportTicket(params: CreateTicketParams): Promise<CreateTicketResult> {
+  return dbAdapter.withTransaction(async () => {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
 
-  // Generate unpredictable unique ticket reference
-  let ticketRef = "";
-  let exists = true;
-  while (exists) {
-    ticketRef = generateTicketReference();
-    const existing = db.prepare("SELECT id FROM support_tickets WHERE ticket_ref = ?").get(ticketRef);
-    if (!existing) exists = false;
-  }
+    // Generate unpredictable unique ticket reference
+    let ticketRef = "";
+    let exists = true;
+    while (exists) {
+      ticketRef = generateTicketReference();
+      const existing = await queryGet<{ id: string }>("SELECT id FROM support_tickets WHERE ticket_ref = ?", ticketRef);
+      if (!existing) exists = false;
+    }
 
-  // Generate private recovery code and cryptographic verifier
-  const recoveryCode = generateRecoveryCode();
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hashedVerifier = hashRecoveryCode(recoveryCode, salt);
-  const sessionToken = generateSessionToken();
+    // Generate private recovery code and cryptographic verifier
+    const recoveryCode = generateRecoveryCode();
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hashedVerifier = hashRecoveryCode(recoveryCode, salt);
+    const sessionToken = generateSessionToken();
 
-  // Insert ticket
-  db.prepare(`
-    INSERT INTO support_tickets (
-      id, ticket_ref, preferred_language, topic, status, 
-      assigned_volunteer_id, is_priority_review, is_safety_flagged, 
-      deletion_requested, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, 'waiting', NULL, 0, 0, 0, ?, ?)
-  `).run(id, ticketRef, params.preferredLanguage, params.topic || null, now, now);
+    // Insert ticket
+    await dbAdapter.run(`
+      INSERT INTO support_tickets (
+        id, ticket_ref, preferred_language, topic, status, 
+        assigned_volunteer_id, is_priority_review, is_safety_flagged, 
+        deletion_requested, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, 'waiting', NULL, 0, 0, 0, ?, ?)
+    `, [id, ticketRef, params.preferredLanguage, params.topic || null, now, now]);
 
-  // Insert access credentials
-  db.prepare(`
-    INSERT INTO ticket_access_credentials (
-      ticket_id, hashed_recovery_verifier, salt, session_token, created_at
-    ) VALUES (?, ?, ?, ?, ?)
-  `).run(id, hashedVerifier, salt, sessionToken, now);
+    // Insert access credentials
+    await dbAdapter.run(`
+      INSERT INTO ticket_access_credentials (
+        ticket_id, hashed_recovery_verifier, salt, session_token, created_at
+      ) VALUES (?, ?, ?, ?, ?)
+    `, [id, hashedVerifier, salt, sessionToken, now]);
 
-  // Send compassionate welcome message
-  const welcomeText = params.preferredLanguage === "si"
-    ? "හිතට ඉඩක් වෙත සාදරයෙන් පිළිගනිමු. ඔබට පහසු වේගයකින් ඔබේ සිතේ ඇති දේ මෙහි ලියන්න. සහායකයෙකුට හැකි වූ විට පිළිතුරු දෙනු ඇත. මෙය ස්වයංක්‍රීය පිළිගැනීමේ පණිවිඩයකි."
-    : "Welcome to Hithata Idak. You can share whatever is on your mind, at your own pace. A human volunteer can reply when available; a reply time is not guaranteed. This is an automatic welcome message.";
+    // Send compassionate welcome message
+    const welcomeText = params.preferredLanguage === "si"
+      ? "හිතට ඉඩක් වෙත සාදරයෙන් පිළිගනිමු. ඔබට පහසු වේගයකින් ඔබේ සිතේ ඇති දේ මෙහි ලියන්න. සහායකයෙකුට හැකි වූ විට පිළිතුරු දෙනු ඇත. මෙය ස්වයංක්‍රීය පිළිගැනීමේ පණිවිඩයකි."
+      : "Welcome to Hithata Idak. You can share whatever is on your mind, at your own pace. A human volunteer can reply when available; a reply time is not guaranteed. This is an automatic welcome message.";
 
-  addMessageInternal(id, "system", "Hithata Idak", welcomeText);
+    await addMessageInternal(id, "system", "Hithata Idak", welcomeText);
 
-  const ticket = getTicketById(id)!;
-  return { ticket, recoveryCode, sessionToken };
+    const ticket = (await getTicketById(id))!;
+    return { ticket, recoveryCode, sessionToken };
   });
 }
 
-export function getTicketById(id: string): SupportTicket | null {
+export async function getTicketById(id: string): Promise<SupportTicket | null> {
   return queryGet<SupportTicket & { assigned_volunteer_name?: string }>(`
     SELECT t.*, v.display_name as assigned_volunteer_name
     FROM support_tickets t
@@ -185,7 +183,7 @@ export function getTicketById(id: string): SupportTicket | null {
   `, id);
 }
 
-export function getTicketByRef(ref: string): SupportTicket | null {
+export async function getTicketByRef(ref: string): Promise<SupportTicket | null> {
   return queryGet<SupportTicket & { assigned_volunteer_name?: string }>(`
     SELECT t.*, v.display_name as assigned_volunteer_name
     FROM support_tickets t
@@ -197,9 +195,9 @@ export function getTicketByRef(ref: string): SupportTicket | null {
 /**
  * Validates whether a visitor session token grants access to this ticket.
  */
-export function verifyVisitorSession(ticketId: string, sessionToken: string): boolean {
+export async function verifyVisitorSession(ticketId: string, sessionToken: string): Promise<boolean> {
   if (!sessionToken) return false;
-  const row = queryGet<{ session_token: string }>(`
+  const row = await queryGet<{ session_token: string }>(`
     SELECT session_token FROM ticket_access_credentials WHERE ticket_id = ?
   `, ticketId);
 
@@ -210,11 +208,11 @@ export function verifyVisitorSession(ticketId: string, sessionToken: string): bo
  * Validates a recovery code for a given ticket reference.
  * If valid, generates a new session token, updates credentials, and returns ticket + new token.
  */
-export function resumeTicketWithRecoveryCode(ticketRef: string, recoveryCode: string): { ticket: SupportTicket; sessionToken: string } | null {
-  const ticket = getTicketByRef(ticketRef);
+export async function resumeTicketWithRecoveryCode(ticketRef: string, recoveryCode: string): Promise<{ ticket: SupportTicket; sessionToken: string } | null> {
+  const ticket = await getTicketByRef(ticketRef);
   if (!ticket) return null;
 
-  const creds = queryGet<{ hashed_recovery_verifier: string; salt: string }>(`
+  const creds = await queryGet<{ hashed_recovery_verifier: string; salt: string }>(`
     SELECT hashed_recovery_verifier, salt FROM ticket_access_credentials WHERE ticket_id = ?
   `, ticket.id);
 
@@ -225,9 +223,9 @@ export function resumeTicketWithRecoveryCode(ticketRef: string, recoveryCode: st
 
   // Generate fresh session token
   const newSessionToken = generateSessionToken();
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE ticket_access_credentials SET session_token = ? WHERE ticket_id = ?
-  `).run(newSessionToken, ticket.id);
+  `, [newSessionToken, ticket.id]);
 
   return { ticket, sessionToken: newSessionToken };
 }
@@ -236,18 +234,28 @@ export function resumeTicketWithRecoveryCode(ticketRef: string, recoveryCode: st
 // MESSAGING & ENCRYPTION
 // ==========================================
 
-function addMessageInternal(ticketId: string, senderRole: "visitor" | "supporter" | "system", senderName: string, content: string): ConversationMessage {
+let lastMessageTimestamp = 0;
+function getMonotonicTimestamp(): string {
+  let now = Date.now();
+  if (now <= lastMessageTimestamp) {
+    now = lastMessageTimestamp + 1;
+  }
+  lastMessageTimestamp = now;
+  return new Date(now).toISOString();
+}
+
+async function addMessageInternal(ticketId: string, senderRole: "visitor" | "supporter" | "system", senderName: string, content: string): Promise<ConversationMessage> {
   const id = crypto.randomUUID();
-  const now = new Date().toISOString();
+  const now = getMonotonicTimestamp();
   const encrypted = encryptMessage(content);
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO conversation_messages (
       id, ticket_id, sender_role, sender_name, ciphertext, iv, auth_tag, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, ticketId, senderRole, senderName, encrypted.ciphertext, encrypted.iv, encrypted.authTag, now);
+  `, [id, ticketId, senderRole, senderName, encrypted.ciphertext, encrypted.iv, encrypted.authTag, now]);
 
-  db.prepare("UPDATE support_tickets SET updated_at = ? WHERE id = ?").run(now, ticketId);
+  await dbAdapter.run("UPDATE support_tickets SET updated_at = ? WHERE id = ?", [now, ticketId]);
 
   return {
     id,
@@ -259,30 +267,30 @@ function addMessageInternal(ticketId: string, senderRole: "visitor" | "supporter
   };
 }
 
-export function addMessage(ticketId: string, senderRole: "visitor" | "supporter" | "system", senderName: string, content: string): ConversationMessage {
-  const existingTicket = getTicketById(ticketId);
+export async function addMessage(ticketId: string, senderRole: "visitor" | "supporter" | "system", senderName: string, content: string): Promise<ConversationMessage> {
+  const existingTicket = await getTicketById(ticketId);
   if (!existingTicket || existingTicket.status === "closed") {
     throw new Error("This conversation is closed or unavailable.");
   }
-  const msg = addMessageInternal(ticketId, senderRole, senderName, content);
+  const msg = await addMessageInternal(ticketId, senderRole, senderName, content);
 
   // Status transitions
-  const ticket = getTicketById(ticketId);
+  const ticket = await getTicketById(ticketId);
   if (ticket && ticket.status !== "closed") {
     if (senderRole === "visitor") {
       if (ticket.status === "awaiting_reply") {
-        db.prepare("UPDATE support_tickets SET status = 'active' WHERE id = ?").run(ticketId);
+        await dbAdapter.run("UPDATE support_tickets SET status = 'active' WHERE id = ?", [ticketId]);
       }
     } else if (senderRole === "supporter") {
-      db.prepare("UPDATE support_tickets SET status = 'awaiting_reply' WHERE id = ?").run(ticketId);
+      await dbAdapter.run("UPDATE support_tickets SET status = 'awaiting_reply' WHERE id = ?", [ticketId]);
     }
   }
 
   return msg;
 }
 
-export function getTicketMessages(ticketId: string): ConversationMessage[] {
-  const rows = queryAll<{
+export async function getTicketMessages(ticketId: string): Promise<ConversationMessage[]> {
+  const rows = await queryAll<{
     id: string;
     ticket_id: string;
     sender_role: "visitor" | "supporter" | "system";
@@ -295,7 +303,7 @@ export function getTicketMessages(ticketId: string): ConversationMessage[] {
     SELECT id, ticket_id, sender_role, sender_name, ciphertext, iv, auth_tag, created_at
     FROM conversation_messages
     WHERE ticket_id = ?
-    ORDER BY created_at ASC, rowid ASC
+    ORDER BY created_at ASC
   `, ticketId);
 
   return rows.map((row) => ({
@@ -326,9 +334,9 @@ function normalizeLoginIdentifier(identifier: string): string {
   return clean;
 }
 
-export function volunteerLogin(email: string, password: string): { volunteer: Volunteer; sessionToken: string } | null {
+export async function volunteerLogin(email: string, password: string): Promise<{ volunteer: Volunteer; sessionToken: string } | null> {
   const normalizedEmail = normalizeLoginIdentifier(email);
-  const row = queryGet<Volunteer & { password_hash: string; password_salt: string }>(`
+  const row = await queryGet<Volunteer & { password_hash: string; password_salt: string }>(`
     SELECT * FROM volunteers WHERE email = ? AND is_active = 1 AND is_approved = 1
   `, normalizedEmail);
 
@@ -358,13 +366,13 @@ export function volunteerLogin(email: string, password: string): { volunteer: Vo
   const now = new Date();
   const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO volunteer_sessions (token, volunteer_id, expires_at, created_at)
     VALUES (?, ?, ?, ?)
-  `).run(sessionToken, row.id, expires, now.toISOString());
+  `, [sessionToken, row.id, expires, now.toISOString()]);
 
   // Mark status as online by default upon login
-  setVolunteerAvailability(row.id, "online");
+  await setVolunteerAvailability(row.id, "online");
 
   return {
     volunteer: {
@@ -372,8 +380,8 @@ export function volunteerLogin(email: string, password: string): { volunteer: Vo
       email: row.email,
       display_name: row.display_name,
       role: row.role,
-      is_active: row.is_active,
-      is_approved: row.is_approved,
+      is_active: Number(row.is_active),
+      is_approved: Number(row.is_approved),
       created_at: row.created_at,
       updated_at: row.updated_at,
     },
@@ -381,7 +389,7 @@ export function volunteerLogin(email: string, password: string): { volunteer: Vo
   };
 }
 
-export function getVolunteerBySession(token: string): Volunteer | null {
+export async function getVolunteerBySession(token: string): Promise<Volunteer | null> {
   if (!token) return null;
   const now = new Date().toISOString();
   return queryGet<Volunteer>(`
@@ -393,31 +401,33 @@ export function getVolunteerBySession(token: string): Volunteer | null {
   `, token, now);
 }
 
-export function volunteerLogout(token: string): void {
+export async function volunteerLogout(token: string): Promise<void> {
   if (!token) return;
-  const session = queryGet<{ volunteer_id: string }>("SELECT volunteer_id FROM volunteer_sessions WHERE token = ?", token);
+  const session = await queryGet<{ volunteer_id: string }>("SELECT volunteer_id FROM volunteer_sessions WHERE token = ?", token);
   if (session) {
-    setVolunteerAvailability(session.volunteer_id, "offline");
+    await setVolunteerAvailability(session.volunteer_id, "offline");
   }
-  db.prepare("DELETE FROM volunteer_sessions WHERE token = ?").run(token);
+  await dbAdapter.run("DELETE FROM volunteer_sessions WHERE token = ?", [token]);
 }
 
-export function setVolunteerAvailability(volunteerId: string, status: "online" | "busy" | "offline"): void {
+export async function setVolunteerAvailability(volunteerId: string, status: "online" | "busy" | "offline"): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO volunteer_availability (volunteer_id, status, updated_at) VALUES (?, ?, ?)
     ON CONFLICT(volunteer_id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at
-  `).run(volunteerId, status, now);
+  `, [volunteerId, status, now]);
 }
 
 // Portal queue polling refreshes real presence without changing the volunteer's chosen status.
-export function touchVolunteerPresence(volunteerId: string): void {
-  db.prepare("UPDATE volunteer_availability SET updated_at = ? WHERE volunteer_id = ?")
-    .run(new Date().toISOString(), volunteerId);
+export async function touchVolunteerPresence(volunteerId: string): Promise<void> {
+  await dbAdapter.run("UPDATE volunteer_availability SET updated_at = ? WHERE volunteer_id = ?", [
+    new Date().toISOString(),
+    volunteerId,
+  ]);
 }
 
-export function getVolunteerAvailability(volunteerId: string): "online" | "busy" | "offline" {
-  const row = queryGet<{ status: "online" | "busy" | "offline" }>("SELECT status FROM volunteer_availability WHERE volunteer_id = ?", volunteerId);
+export async function getVolunteerAvailability(volunteerId: string): Promise<"online" | "busy" | "offline"> {
+  const row = await queryGet<{ status: "online" | "busy" | "offline" }>("SELECT status FROM volunteer_availability WHERE volunteer_id = ?", volunteerId);
   return row ? row.status : "offline";
 }
 
@@ -425,7 +435,7 @@ export function getVolunteerAvailability(volunteerId: string): "online" | "busy"
 // TICKET QUEUE & SUPPORTER ACTIONS
 // ==========================================
 
-export function listQueueTickets(): SupportTicket[] {
+export async function listQueueTickets(): Promise<SupportTicket[]> {
   return queryAll<SupportTicket & { assigned_volunteer_name?: string }>(`
     SELECT t.*, v.display_name as assigned_volunteer_name
     FROM support_tickets t
@@ -443,135 +453,135 @@ export function listQueueTickets(): SupportTicket[] {
   `);
 }
 
-export function assignTicket(ticketId: string, volunteerId: string, assignedBy: string): void {
+export async function assignTicket(ticketId: string, volunteerId: string, assignedBy: string): Promise<void> {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
     SET assigned_volunteer_id = ?, status = 'assigned', updated_at = ?
     WHERE id = ?
-  `).run(volunteerId, now, ticketId);
+  `, [volunteerId, now, ticketId]);
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO ticket_assignments (id, ticket_id, volunteer_id, assigned_by, assigned_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(id, ticketId, volunteerId, assignedBy, now);
+  `, [id, ticketId, volunteerId, assignedBy, now]);
 
-  const vol = queryGet<{ display_name: string }>("SELECT display_name FROM volunteers WHERE id = ?", volunteerId);
+  const vol = await queryGet<{ display_name: string }>("SELECT display_name FROM volunteers WHERE id = ?", volunteerId);
   const supporterName = vol ? vol.display_name : "A human supporter";
 
-  addMessageInternal(ticketId, "system", "Hithata Idak", `${supporterName} has joined the conversation.`);
+  await addMessageInternal(ticketId, "system", "Hithata Idak", `${supporterName} has joined the conversation.`);
 }
 
-export function unassignTicket(ticketId: string): void {
+export async function unassignTicket(ticketId: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
     SET assigned_volunteer_id = NULL, status = 'waiting', updated_at = ?
     WHERE id = ?
-  `).run(now, ticketId);
+  `, [now, ticketId]);
 
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE ticket_assignments
     SET unassigned_at = ?
     WHERE ticket_id = ? AND unassigned_at IS NULL
-  `).run(now, ticketId);
+  `, [now, ticketId]);
 
-  addMessageInternal(ticketId, "system", "Hithata Idak", "The conversation is in the queue for the next available supporter.");
+  await addMessageInternal(ticketId, "system", "Hithata Idak", "The conversation is in the queue for the next available supporter.");
 }
 
-export function closeTicket(ticketId: string, closedByRole: "visitor" | "supporter" | "admin"): void {
-  const ticket = getTicketById(ticketId);
+export async function closeTicket(ticketId: string, closedByRole: "visitor" | "supporter" | "admin"): Promise<void> {
+  const ticket = await getTicketById(ticketId);
   if (!ticket || ticket.status === "closed") return;
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
     SET status = 'closed', closed_at = ?, updated_at = ?
     WHERE id = ?
-  `).run(now, now, ticketId);
+  `, [now, now, ticketId]);
 
   const closedNotice = closedByRole === "visitor"
     ? "The visitor has closed this conversation. Thank you for connecting with Hithata Idak."
     : "This conversation has been gently closed. If you need support again, you are always welcome to return and start a new conversation.";
 
-  addMessageInternal(ticketId, "system", "Hithata Idak", closedNotice);
+  await addMessageInternal(ticketId, "system", "Hithata Idak", closedNotice);
 }
 
-export function setPriorityReview(ticketId: string, isPriority: boolean, notes?: string): void {
+export async function setPriorityReview(ticketId: string, isPriority: boolean, notes?: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
-    SET is_priority_review = ?, safety_notes = COALESCE(?, safety_notes), updated_at = ?
+    SET is_priority_review = ?, safety_notes = COALESCE(CAST(? AS TEXT), safety_notes), updated_at = ?
     WHERE id = ?
-  `).run(isPriority ? 1 : 0, notes || null, now, ticketId);
+  `, [isPriority ? 1 : 0, notes || null, now, ticketId]);
 }
 
-export function setSafetyFlag(ticketId: string, isFlagged: boolean, notes?: string): void {
+export async function setSafetyFlag(ticketId: string, isFlagged: boolean, notes?: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
-    SET is_safety_flagged = ?, safety_notes = COALESCE(?, safety_notes), updated_at = ?
+    SET is_safety_flagged = ?, safety_notes = COALESCE(CAST(? AS TEXT), safety_notes), updated_at = ?
     WHERE id = ?
-  `).run(isFlagged ? 1 : 0, notes || null, now, ticketId);
+  `, [isFlagged ? 1 : 0, notes || null, now, ticketId]);
 }
 
-export function submitFeedback(ticketId: string, rating: number, text?: string): void {
-  db.prepare(`
+export async function submitFeedback(ticketId: string, rating: number, text?: string): Promise<void> {
+  await dbAdapter.run(`
     UPDATE support_tickets 
     SET feedback_rating = ?, feedback_text = ?, updated_at = ?
     WHERE id = ?
-  `).run(rating, text || null, new Date().toISOString(), ticketId);
+  `, [rating, text || null, new Date().toISOString(), ticketId]);
 }
 
 // ==========================================
 // PRIVACY & DATA DELETION
 // ==========================================
 
-export function requestConversationDeletion(ticketId: string, ticketRef: string): void {
+export async function requestConversationDeletion(ticketId: string, ticketRef: string): Promise<void> {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
     SET deletion_requested = 1, deletion_requested_at = ?, updated_at = ?
     WHERE id = ?
-  `).run(now, now, ticketId);
+  `, [now, now, ticketId]);
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO privacy_requests (id, ticket_id, ticket_ref, request_type, status, created_at)
     VALUES (?, ?, ?, 'delete_conversation', 'pending', ?)
-  `).run(id, ticketId, ticketRef, now);
+  `, [id, ticketId, ticketRef, now]);
 }
 
-export function processConversationDeletion(ticketId: string, processedBy: string): void {
+export async function processConversationDeletion(ticketId: string, processedBy: string): Promise<void> {
   const now = new Date().toISOString();
 
   // 1. Shred all conversation messages
-  db.prepare("DELETE FROM conversation_messages WHERE ticket_id = ?").run(ticketId);
+  await dbAdapter.run("DELETE FROM conversation_messages WHERE ticket_id = ?", [ticketId]);
 
   // 2. Shred access credentials
-  db.prepare("DELETE FROM ticket_access_credentials WHERE ticket_id = ?").run(ticketId);
+  await dbAdapter.run("DELETE FROM ticket_access_credentials WHERE ticket_id = ?", [ticketId]);
 
   // 3. Anonymize and close the ticket record
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE support_tickets 
     SET status = 'closed', topic = '[Deleted upon user request]', safety_notes = NULL, feedback_text = NULL, closed_at = ?, updated_at = ?
     WHERE id = ?
-  `).run(now, now, ticketId);
+  `, [now, now, ticketId]);
 
   // 4. Mark privacy request as processed
-  db.prepare(`
+  await dbAdapter.run(`
     UPDATE privacy_requests 
     SET status = 'processed', processed_by = ?, processed_at = ?, notes = 'Conversation messages and recovery credentials securely shredded.'
     WHERE ticket_id = ?
-  `).run(processedBy, now, ticketId);
+  `, [processedBy, now, ticketId]);
 
   // 5. Audit log
-  logAdminAudit(processedBy, "DELETE_CONVERSATION", "ticket", ticketId, "Permanent data shredding executed per user request");
+  await logAdminAudit(processedBy, "DELETE_CONVERSATION", "ticket", ticketId, "Permanent data shredding executed per user request");
 }
 
-export function listPrivacyRequests(): PrivacyRequest[] {
+export async function listPrivacyRequests(): Promise<PrivacyRequest[]> {
   return queryAll<PrivacyRequest>("SELECT * FROM privacy_requests ORDER BY created_at DESC");
 }
 
@@ -579,85 +589,85 @@ export function listPrivacyRequests(): PrivacyRequest[] {
 // INCIDENT REPORTING & VOLUNTEER ONBOARDING
 // ==========================================
 
-export function createIncidentReport(params: {
+export async function createIncidentReport(params: {
   reportType: "supporter_behavior" | "privacy_concern" | "harassment" | "platform_misuse" | "technical_issue";
   ticketRef?: string;
   description: string;
   contactEmail?: string;
-}): string {
+}): Promise<string> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO incident_reports (id, report_type, ticket_ref, description, contact_email, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'open', ?)
-  `).run(id, params.reportType, params.ticketRef || null, params.description, params.contactEmail || null, now);
+  `, [id, params.reportType, params.ticketRef || null, params.description, params.contactEmail || null, now]);
 
   return id;
 }
 
-export function listIncidentReports(): IncidentReport[] {
+export async function listIncidentReports(): Promise<IncidentReport[]> {
   return queryAll<IncidentReport>("SELECT * FROM incident_reports ORDER BY created_at DESC");
 }
 
-export function updateIncidentStatus(id: string, status: "open" | "under_review" | "resolved", notes?: string): boolean {
-  const result = db.prepare(`
+export async function updateIncidentStatus(id: string, status: "open" | "under_review" | "resolved", notes?: string): Promise<boolean> {
+  const result = await dbAdapter.run(`
     UPDATE incident_reports 
-    SET status = ?, resolution_notes = COALESCE(?, resolution_notes)
+    SET status = ?, resolution_notes = COALESCE(CAST(? AS TEXT), resolution_notes)
     WHERE id = ?
-  `).run(status, notes ?? null, id);
+  `, [status, notes ?? null, id]);
   return result.changes > 0;
 }
 
-export function createVolunteerApplication(params: {
+export async function createVolunteerApplication(params: {
   fullName: string;
   email: string;
   phone?: string;
   languages: string;
   motivation: string;
   background: string;
-}): string {
+}): Promise<string> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO volunteer_applications (id, full_name, email, phone, languages, motivation, background, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-  `).run(id, params.fullName, params.email, params.phone || null, params.languages, params.motivation, params.background, now);
+  `, [id, params.fullName, params.email, params.phone || null, params.languages, params.motivation, params.background, now]);
 
   return id;
 }
 
-export function listVolunteerApplications(): VolunteerApplication[] {
+export async function listVolunteerApplications(): Promise<VolunteerApplication[]> {
   return queryAll<VolunteerApplication>("SELECT * FROM volunteer_applications ORDER BY created_at DESC");
 }
 
-export function updateVolunteerApplicationStatus(id: string, status: "pending" | "interview_scheduled" | "training" | "approved" | "rejected", notes?: string): boolean {
-  const result = db.prepare(`
+export async function updateVolunteerApplicationStatus(id: string, status: "pending" | "interview_scheduled" | "training" | "approved" | "rejected", notes?: string): Promise<boolean> {
+  const result = await dbAdapter.run(`
     UPDATE volunteer_applications 
-    SET status = ?, notes = COALESCE(?, notes)
+    SET status = ?, notes = COALESCE(CAST(? AS TEXT), notes)
     WHERE id = ?
-  `).run(status, notes ?? null, id);
+  `, [status, notes ?? null, id]);
   return result.changes > 0;
 }
 
-export function createUserFeedback(params: {
+export async function createUserFeedback(params: {
   feedbackType: string;
   rating?: number;
   message: string;
-}): string {
+}): Promise<string> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO user_feedback (id, feedback_type, rating, message, created_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(id, params.feedbackType, params.rating || null, params.message, now);
+  `, [id, params.feedbackType, params.rating || null, params.message, now]);
 
   return id;
 }
 
-export function listUserFeedback(): UserFeedback[] {
+export async function listUserFeedback(): Promise<UserFeedback[]> {
   return queryAll<UserFeedback>("SELECT * FROM user_feedback ORDER BY created_at DESC");
 }
 
@@ -665,26 +675,26 @@ export function listUserFeedback(): UserFeedback[] {
 // VOLUNTEER TEAM & AUDIT LOGS
 // ==========================================
 
-export function listVolunteers(): Volunteer[] {
+export async function listVolunteers(): Promise<Volunteer[]> {
   return queryAll<Volunteer>("SELECT id, email, display_name, role, is_active, is_approved, created_at, updated_at FROM volunteers ORDER BY created_at ASC");
 }
 
-export function createVolunteerAccount(params: {
+export async function createVolunteerAccount(params: {
   email: string;
   displayName: string;
   role: "admin" | "supervisor" | "supporter";
   password: string;
-}): Volunteer {
+}): Promise<Volunteer> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const { hash, salt } = hashPassword(params.password);
 
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO volunteers (id, email, display_name, password_hash, password_salt, role, is_active, is_approved, mfa_enabled, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, 1, 1, 0, ?, ?)
-  `).run(id, params.email.trim().toLowerCase(), params.displayName, hash, salt, params.role, now, now);
+  `, [id, params.email.trim().toLowerCase(), params.displayName, hash, salt, params.role, now, now]);
 
-  setVolunteerAvailability(id, "offline");
+  await setVolunteerAvailability(id, "offline");
 
   return {
     id,
@@ -698,28 +708,28 @@ export function createVolunteerAccount(params: {
   };
 }
 
-export function updateVolunteerStatus(id: string, isActive: boolean, isApproved: boolean): boolean {
+export async function updateVolunteerStatus(id: string, isActive: boolean, isApproved: boolean): Promise<boolean> {
   const now = new Date().toISOString();
-  const result = db.prepare(`
+  const result = await dbAdapter.run(`
     UPDATE volunteers SET is_active = ?, is_approved = ?, updated_at = ? WHERE id = ?
-  `).run(isActive ? 1 : 0, isApproved ? 1 : 0, now, id);
+  `, [isActive ? 1 : 0, isApproved ? 1 : 0, now, id]);
   if (!result.changes) return false;
   if (!isActive || !isApproved) {
-    db.prepare("DELETE FROM volunteer_sessions WHERE volunteer_id = ?").run(id);
-    setVolunteerAvailability(id, "offline");
+    await dbAdapter.run("DELETE FROM volunteer_sessions WHERE volunteer_id = ?", [id]);
+    await setVolunteerAvailability(id, "offline");
   }
   return true;
 }
 
-export function logAdminAudit(volunteerId: string | null, action: string, targetType: string, targetId: string, detailsSafe: string): void {
+export async function logAdminAudit(volunteerId: string | null, action: string, targetType: string, targetId: string, detailsSafe: string): Promise<void> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbAdapter.run(`
     INSERT INTO admin_audit_events (id, volunteer_id, action, target_type, target_id, details_safe, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(id, volunteerId, action, targetType, targetId, detailsSafe, now);
+  `, [id, volunteerId, action, targetType, targetId, detailsSafe, now]);
 }
 
-export function listAdminAuditEvents(limit = 50): AdminAuditEvent[] {
+export async function listAdminAuditEvents(limit = 50): Promise<AdminAuditEvent[]> {
   return queryAll<AdminAuditEvent>("SELECT * FROM admin_audit_events ORDER BY created_at DESC LIMIT ?", limit);
 }

@@ -20,11 +20,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid availability status" }, { status: 400 });
     }
 
-    setVolunteerAvailability(supporter.id, parsed.data.status);
+    await setVolunteerAvailability(supporter.id, parsed.data.status);
     return NextResponse.json({ ok: true, status: parsed.data.status });
   } catch (error) {
     console.error("Set availability error:", error);
     return NextResponse.json({ error: "Failed to update availability" }, { status: 500 });
   }
 }
-

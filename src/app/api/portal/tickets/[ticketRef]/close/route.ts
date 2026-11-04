@@ -10,7 +10,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -18,8 +18,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     if (supporter.role === "supporter" && ticket.assigned_volunteer_id !== supporter.id) {
       return NextResponse.json({ error: "You can only close conversations assigned to you." }, { status: 403 });
     }
-    closeTicket(ticket.id, "supporter");
-    logAdminAudit(supporter.id, "CLOSE_TICKET", "ticket", ticket.id, "Conversation marked closed by supporter");
+    await closeTicket(ticket.id, "supporter");
+    await logAdminAudit(supporter.id, "CLOSE_TICKET", "ticket", ticket.id, "Conversation marked closed by supporter");
 
     return NextResponse.json({ ok: true, status: "closed" });
   } catch (error) {
@@ -27,4 +27,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to close conversation" }, { status: 500 });
   }
 }
-

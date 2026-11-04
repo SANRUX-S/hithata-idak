@@ -9,7 +9,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const applications = listVolunteerApplications();
+    const applications = await listVolunteerApplications();
     return NextResponse.json({ applications });
   } catch (error) {
     console.error("List applications error:", error);

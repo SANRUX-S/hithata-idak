@@ -7,7 +7,7 @@ import { Volunteer, SupportTicket } from "./types";
  * Checks cookie 'hid_visitor_session' or 'x-visitor-session' header.
  */
 export async function authenticateVisitor(ticketRef: string, request?: Request): Promise<{ ticket: SupportTicket; isAuthorized: boolean }> {
-  const ticket = getTicketByRef(ticketRef);
+  const ticket = await getTicketByRef(ticketRef);
   if (!ticket) {
     return { ticket: null as unknown as SupportTicket, isAuthorized: false };
   }
@@ -16,7 +16,7 @@ export async function authenticateVisitor(ticketRef: string, request?: Request):
   // A tab's explicit session must win over the cookie shared with other conversations.
   const sessionToken = request?.headers.get("x-visitor-session") || cookieStore.get("hid_visitor_session")?.value || "";
 
-  const isAuthorized = verifyVisitorSession(ticket.id, sessionToken);
+  const isAuthorized = await verifyVisitorSession(ticket.id, sessionToken);
   return { ticket, isAuthorized };
 }
 
@@ -29,6 +29,5 @@ export async function authenticateSupporter(request?: Request): Promise<Voluntee
   const sessionToken = request?.headers.get("x-supporter-session") || cookieStore.get("hid_supporter_session")?.value || "";
 
   if (!sessionToken) return null;
-  return getVolunteerBySession(sessionToken);
+  return await getVolunteerBySession(sessionToken);
 }
-

@@ -17,11 +17,18 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const [serviceStatus, pilotMode, operatingHours, retentionDays] = await Promise.all([
+      getPlatformSetting("service_status"),
+      getPlatformSetting("pilot_mode"),
+      getPlatformSetting("operating_hours"),
+      getPlatformSetting("retention_days"),
+    ]);
+
     return NextResponse.json({
-      serviceStatus: getPlatformSetting("service_status") || "online",
-      pilotMode: getPlatformSetting("pilot_mode") || "true",
-      operatingHours: getPlatformSetting("operating_hours") || "8:00 AM - 10:00 PM IST (Sri Lanka Time)",
-      retentionDays: getPlatformSetting("retention_days") || "30",
+      serviceStatus: serviceStatus || "online",
+      pilotMode: pilotMode || "true",
+      operatingHours: operatingHours || "8:00 AM - 10:00 PM IST (Sri Lanka Time)",
+      retentionDays: retentionDays || "30",
     });
   } catch (error) {
     console.error("Get settings error:", error);
@@ -42,12 +49,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid settings format" }, { status: 400 });
     }
 
-    if (parsed.data.serviceStatus) updatePlatformSetting("service_status", parsed.data.serviceStatus);
-    if (parsed.data.pilotMode) updatePlatformSetting("pilot_mode", parsed.data.pilotMode);
-    if (parsed.data.operatingHours) updatePlatformSetting("operating_hours", parsed.data.operatingHours);
-    if (parsed.data.retentionDays) updatePlatformSetting("retention_days", parsed.data.retentionDays);
+    if (parsed.data.serviceStatus) await updatePlatformSetting("service_status", parsed.data.serviceStatus);
+    if (parsed.data.pilotMode) await updatePlatformSetting("pilot_mode", parsed.data.pilotMode);
+    if (parsed.data.operatingHours) await updatePlatformSetting("operating_hours", parsed.data.operatingHours);
+    if (parsed.data.retentionDays) await updatePlatformSetting("retention_days", parsed.data.retentionDays);
 
-    logAdminAudit(supporter.id, "UPDATE_SETTINGS", "platform_settings", "global", JSON.stringify(parsed.data));
+    await logAdminAudit(supporter.id, "UPDATE_SETTINGS", "platform_settings", "global", JSON.stringify(parsed.data));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     // Clear supporter typing indicator
     setTyping(ticket.id, "supporter", supporter.display_name, false);
 
-    const message = addMessage(ticket.id, "supporter", supporter.display_name, parsed.data.content);
+    const message = await addMessage(ticket.id, "supporter", supporter.display_name, parsed.data.content);
 
     return NextResponse.json({ message });
   } catch (error) {
@@ -46,4 +46,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
-

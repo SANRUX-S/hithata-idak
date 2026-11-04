@@ -25,10 +25,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (id === supporter.id && (!parsed.data.isActive || !parsed.data.isApproved)) {
       return NextResponse.json({ error: "You cannot suspend or revoke approval for your own administrator account." }, { status: 400 });
     }
-    if (!updateVolunteerStatus(id, parsed.data.isActive, parsed.data.isApproved)) {
+    const updated = await updateVolunteerStatus(id, parsed.data.isActive, parsed.data.isApproved);
+    if (!updated) {
       return NextResponse.json({ error: "Volunteer not found" }, { status: 404 });
     }
-    logAdminAudit(supporter.id, "UPDATE_VOLUNTEER_STATUS", "volunteer", id, `Active: ${parsed.data.isActive}, Approved: ${parsed.data.isApproved}`);
+    await logAdminAudit(supporter.id, "UPDATE_VOLUNTEER_STATUS", "volunteer", id, `Active: ${parsed.data.isActive}, Approved: ${parsed.data.isApproved}`);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -36,4 +37,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Failed to update volunteer status" }, { status: 500 });
   }
 }
-

@@ -23,11 +23,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
       return NextResponse.json({ error: "Invalid feedback parameters" }, { status: 400 });
     }
 
-    submitFeedback(ticket.id, parsed.data.rating, parsed.data.text);
+    await submitFeedback(ticket.id, parsed.data.rating, parsed.data.text);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Feedback submission error:", error);
     return NextResponse.json({ error: "Failed to save feedback" }, { status: 500 });
   }
 }
-

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid ticket reference or recovery key format." }, { status: 400 });
     }
 
-    const result = resumeTicketWithRecoveryCode(parsed.data.ticketRef, parsed.data.recoveryCode);
+    const result = await resumeTicketWithRecoveryCode(parsed.data.ticketRef, parsed.data.recoveryCode);
 
     if (!result) {
       return NextResponse.json(
@@ -44,4 +44,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to resume conversation" }, { status: 500 });
   }
 }
-

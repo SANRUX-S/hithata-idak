@@ -22,10 +22,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invalid status parameters" }, { status: 400 });
     }
 
-    if (!updateIncidentStatus(id, parsed.data.status, parsed.data.resolutionNotes)) {
+    const updated = await updateIncidentStatus(id, parsed.data.status, parsed.data.resolutionNotes);
+    if (!updated) {
       return NextResponse.json({ error: "Incident report not found" }, { status: 404 });
     }
-    logAdminAudit(supporter.id, "UPDATE_INCIDENT", "incident", id, `Status set to ${parsed.data.status}`);
+    await logAdminAudit(supporter.id, "UPDATE_INCIDENT", "incident", id, `Status set to ${parsed.data.status}`);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -33,4 +34,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Failed to update incident" }, { status: 500 });
   }
 }
-

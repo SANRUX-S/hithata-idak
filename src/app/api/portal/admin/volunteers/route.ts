@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const volunteers = listVolunteers();
+    const volunteers = await listVolunteers();
     return NextResponse.json({ volunteers });
   } catch (error) {
     console.error("List volunteers error:", error);
@@ -38,14 +38,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid volunteer details. Minimum password length is 8 characters." }, { status: 400 });
     }
 
-    const newVolunteer = createVolunteerAccount({
+    const newVolunteer = await createVolunteerAccount({
       email: parsed.data.email,
       displayName: parsed.data.displayName,
       role: parsed.data.role,
       password: parsed.data.password,
     });
 
-    logAdminAudit(supporter.id, "CREATE_VOLUNTEER", "volunteer", newVolunteer.id, `Created ${parsed.data.role}: ${parsed.data.displayName}`);
+    await logAdminAudit(supporter.id, "CREATE_VOLUNTEER", "volunteer", newVolunteer.id, `Created ${parsed.data.role}: ${parsed.data.displayName}`);
 
     return NextResponse.json({ volunteer: newVolunteer });
   } catch (error: unknown) {

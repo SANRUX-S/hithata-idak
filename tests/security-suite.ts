@@ -36,10 +36,10 @@ async function runTestSuite() {
   let passed = 0;
   let total = 0;
 
-  function test(name: string, fn: () => void) {
+  async function test(name: string, fn: () => Promise<void> | void) {
     total++;
     try {
-      fn();
+      await fn();
       console.log(`✓ [PASS] ${name}`);
       passed++;
     } catch (err) {
@@ -49,19 +49,22 @@ async function runTestSuite() {
     }
   }
 
-  test("Seed accounts are offline until a real supporter signs in", () => {
-    assert.strictEqual(getSystemAvailability().status, "offline");
-    assert.strictEqual(getSystemAvailability().activeSupportersCount, 0);
+  await test("Seed accounts are offline until a real supporter signs in", async () => {
+    const avail = await getSystemAvailability();
+    assert.strictEqual(avail.status, "offline");
+    assert.strictEqual(avail.activeSupportersCount, 0);
   });
 
-  test("Ticket creation rolls back credentials and ticket if the welcome message cannot be saved", () => {
+  await test("Ticket creation rolls back credentials and ticket if the welcome message cannot be saved", async () => {
     const countTickets = () => (db.prepare("SELECT COUNT(*) AS count FROM support_tickets").get() as { count: number }).count;
     const countCredentials = () => (db.prepare("SELECT COUNT(*) AS count FROM ticket_access_credentials").get() as { count: number }).count;
     const beforeTickets = countTickets();
     const beforeCredentials = countCredentials();
     db.exec("CREATE TEMP TRIGGER reject_welcome BEFORE INSERT ON conversation_messages BEGIN SELECT RAISE(ABORT, 'Simulated storage failure'); END;");
     try {
-      assert.throws(() => createSupportTicket({ preferredLanguage: "en" }), /Simulated storage failure/);
+      await assert.rejects(async () => {
+        await createSupportTicket({ preferredLanguage: "en" });
+      }, /Simulated storage failure/);
     } finally {
       db.exec("DROP TRIGGER reject_welcome;");
     }
@@ -70,7 +73,7 @@ async function runTestSuite() {
   });
 
   // 1. Ticket Reference Unpredictability Test
-  test("Ticket References are formatted HID-XXXXXX and non-sequential", () => {
+  await test("Ticket References are formatted HID-XXXXXX and non-sequential", () => {
     const refs = new Set();
     for (let i = 0; i < 50; i++) {
       const ref = generateTicketReference();
@@ -81,7 +84,7 @@ async function runTestSuite() {
   });
 
   // 2. Recovery Credential Storage & Verification
-  test("Private recovery credential verification succeeds with valid key, fails with invalid key", () => {
+  await test("Private recovery credential verification succeeds with valid key, fails with invalid key", () => {
     const recoveryCode = generateRecoveryCode();
     const salt = crypto.randomBytes(16).toString("hex");
     const verifierHash = hashRecoveryCode(recoveryCode, salt);
@@ -100,7 +103,7 @@ async function runTestSuite() {
   });
 
   // 3. Authenticated AES-256-GCM Message Encryption (English & Sinhala)
-  test("AES-256-GCM correctly encrypts and decrypts English & Sinhala Unicode messages", () => {
+  await test("AES-256-GCM correctly encrypts and decrypts English & Sinhala Unicode messages", () => {
     const englishMsg = "I have been feeling really stressed with my university exams lately.";
     const sinhalaMsg = "මගේ හිතට ගොඩක් අමාරුයි, මට කවුරුහරි ඇහුම්කන් දෙනවද?";
 
@@ -122,8 +125,8 @@ async function runTestSuite() {
   });
 
   // 4. Ticket Reference Alone Must NEVER Grant Conversation Access
-  test("Ticket reference alone does not grant access; valid recovery key required to resume", () => {
-    const { ticket, recoveryCode } = createSupportTicket({
+  await test("Ticket reference alone does not grant access; valid recovery key required to resume", async () => {
+    const { ticket, recoveryCode } = await createSupportTicket({
       preferredLanguage: "si",
       topic: "Loneliness & Feeling Misunderstood",
     });
@@ -132,26 +135,27 @@ async function runTestSuite() {
     assert.ok(recoveryCode);
 
     // Try resuming with WRONG recovery code
-    const failedResume = resumeTicketWithRecoveryCode(ticket.ticket_ref, "REC-0000-0000-0000");
+    const failedResume = await resumeTicketWithRecoveryCode(ticket.ticket_ref, "REC-0000-0000-0000");
     assert.strictEqual(failedResume, null, "Should not resume with wrong recovery key");
 
     // Try resuming with CORRECT recovery code
-    const successfulResume = resumeTicketWithRecoveryCode(ticket.ticket_ref, recoveryCode);
+    const successfulResume = await resumeTicketWithRecoveryCode(ticket.ticket_ref, recoveryCode);
     assert.ok(successfulResume, "Should successfully resume with matching recovery key");
     assert.strictEqual(successfulResume?.ticket.ticket_ref, ticket.ticket_ref);
     assert.ok(successfulResume?.sessionToken, "Should grant new session token");
   });
 
   // 5. Message Lifecycle & Real Supporter-Visitor Workflow
-  test("Visitor and supporter messages are saved, encrypted, and retrieved ordered", () => {
-    const { ticket } = createSupportTicket({ preferredLanguage: "en" });
+  await test("Visitor and supporter messages are saved, encrypted, and retrieved ordered", async () => {
+    const { ticket } = await createSupportTicket({ preferredLanguage: "en" });
 
     // Visitor sends a message
-    addMessage(ticket.id, "visitor", "Visitor", "Hello, is someone here?");
-    // Supporter replies
-    addMessage(ticket.id, "supporter", "Volunteer Supporter", "Hello! I am here and listening.");
+    await addMessage(ticket.id, "visitor", "Visitor", "Hello, is someone here?");
 
-    const messages = getTicketMessages(ticket.id);
+    // Supporter replies
+    await addMessage(ticket.id, "supporter", "Volunteer Supporter", "Hello! I am here and listening.");
+
+    const messages = await getTicketMessages(ticket.id);
     // 1 welcome message + 2 conversation messages = 3
     assert.strictEqual(messages.length, 3);
     assert.strictEqual(messages[1].content, "Hello, is someone here?");
@@ -160,83 +164,85 @@ async function runTestSuite() {
   });
 
   // 6. Data Shredding / PDPA Permanent Deletion
-  test("Permanent data deletion completely shreds conversation messages and access credentials", () => {
-    const { ticket } = createSupportTicket({ preferredLanguage: "en" });
-    addMessage(ticket.id, "visitor", "Visitor", "Secret personal information that must be shredded.");
+  await test("Permanent data deletion completely shreds conversation messages and access credentials", async () => {
+    const { ticket } = await createSupportTicket({ preferredLanguage: "en" });
+    await addMessage(ticket.id, "visitor", "Visitor", "Secret personal information that must be shredded.");
 
     // Verify messages exist before deletion
-    const beforeMsgs = getTicketMessages(ticket.id);
+    const beforeMsgs = await getTicketMessages(ticket.id);
     assert.ok(beforeMsgs.length >= 2);
 
     // Execute deletion
-    processConversationDeletion(ticket.id, "admin_user");
+    await processConversationDeletion(ticket.id, "admin_user");
 
     // Verify messages are permanently gone (zero rows)
-    const afterMsgs = getTicketMessages(ticket.id);
+    const afterMsgs = await getTicketMessages(ticket.id);
     assert.strictEqual(afterMsgs.length, 0, "All messages must be wiped");
 
-    const updatedTicket = getTicketById(ticket.id);
+    const updatedTicket = await getTicketById(ticket.id);
     assert.strictEqual(updatedTicket?.status, "closed");
     assert.strictEqual(updatedTicket?.topic, "[Deleted upon user request]");
   });
 
   // 7. Role-Based Volunteer Authentication
-  test("Volunteer authentication validates password salt/hash and issues session", () => {
+  await test("Volunteer authentication validates password salt/hash and issues session", async () => {
     // Valid admin login
-    const adminLogin = volunteerLogin("admin@hithataidak.lk", "AdminSafePassword2026!");
+    const adminLogin = await volunteerLogin("admin@hithataidak.lk", "AdminSafePassword2026!");
     assert.ok(adminLogin, "Admin login should succeed");
     assert.strictEqual(adminLogin.volunteer.role, "admin");
 
-    const sessionVol = getVolunteerBySession(adminLogin.sessionToken);
+    const sessionVol = await getVolunteerBySession(adminLogin.sessionToken);
     assert.ok(sessionVol);
     assert.strictEqual(sessionVol.email, "admin@hithataidak.lk");
 
     // Invalid password
-    const badLogin = volunteerLogin("admin@hithataidak.lk", "WrongPassword123!");
+    const badLogin = await volunteerLogin("admin@hithataidak.lk", "WrongPassword123!");
     assert.strictEqual(badLogin, null, "Bad password must be rejected");
   });
 
   // 8. Dynamic Availability Indicator
-  test("System availability accurately reflects volunteer database status and operating hours", () => {
-    const avail = getSystemAvailability();
+  await test("System availability accurately reflects volunteer database status and operating hours", async () => {
+    const avail = await getSystemAvailability();
     assert.ok(avail.operatingHours);
     assert.ok(["available", "busy", "offline"].includes(avail.status));
     assert.strictEqual(typeof avail.pilotMode, "boolean");
   });
 
-  test("Stale supporter presence expires and real portal activity restores the chosen status", () => {
+  await test("Stale supporter presence expires and real portal activity restores the chosen status", async () => {
     db.prepare("UPDATE volunteer_availability SET status = 'offline'").run();
-    setVolunteerAvailability("vol_sup_01", "online");
-    assert.strictEqual(getSystemAvailability().status, "available");
+    await setVolunteerAvailability("vol_sup_01", "online");
+    assert.strictEqual((await getSystemAvailability()).status, "available");
     db.prepare("UPDATE volunteer_availability SET updated_at = ? WHERE volunteer_id = ?")
       .run(new Date(Date.now() - 120_000).toISOString(), "vol_sup_01");
-    assert.strictEqual(getSystemAvailability().status, "offline");
-    touchVolunteerPresence("vol_sup_01");
-    assert.strictEqual(getSystemAvailability().status, "available");
-    setVolunteerAvailability("vol_sup_01", "busy");
-    touchVolunteerPresence("vol_sup_01");
-    assert.strictEqual(getSystemAvailability().status, "busy");
+    assert.strictEqual((await getSystemAvailability()).status, "offline");
+    await touchVolunteerPresence("vol_sup_01");
+    assert.strictEqual((await getSystemAvailability()).status, "available");
+    await setVolunteerAvailability("vol_sup_01", "busy");
+    await touchVolunteerPresence("vol_sup_01");
+    assert.strictEqual((await getSystemAvailability()).status, "busy");
   });
 
-  test("Closing a conversation is idempotent and further messages cannot be saved", () => {
-    const { ticket } = createSupportTicket({ preferredLanguage: "en" });
-    closeTicket(ticket.id, "visitor");
-    const messages = getTicketMessages(ticket.id);
-    closeTicket(ticket.id, "visitor");
-    assert.strictEqual(getTicketMessages(ticket.id).length, messages.length);
-    assert.throws(() => addMessage(ticket.id, "visitor", "You", "Late message"), /closed/);
-    assert.strictEqual(getTicketMessages(ticket.id).length, messages.length);
+  await test("Closing a conversation is idempotent and further messages cannot be saved", async () => {
+    const { ticket } = await createSupportTicket({ preferredLanguage: "en" });
+    await closeTicket(ticket.id, "visitor");
+    const messages = await getTicketMessages(ticket.id);
+    await closeTicket(ticket.id, "visitor");
+    assert.strictEqual((await getTicketMessages(ticket.id)).length, messages.length);
+    await assert.rejects(async () => {
+      await addMessage(ticket.id, "visitor", "You", "Late message");
+    }, /closed/);
+    assert.strictEqual((await getTicketMessages(ticket.id)).length, messages.length);
   });
 
-  test("Recovery rotates access and processed deletion revokes all conversation credentials", () => {
-    const { ticket, sessionToken, recoveryCode } = createSupportTicket({ preferredLanguage: "en" });
-    assert.strictEqual(verifyVisitorSession(ticket.id, sessionToken), true);
-    const resumed = resumeTicketWithRecoveryCode(ticket.ticket_ref, recoveryCode)!;
-    assert.strictEqual(verifyVisitorSession(ticket.id, sessionToken), false);
-    assert.strictEqual(verifyVisitorSession(ticket.id, resumed.sessionToken), true);
-    processConversationDeletion(ticket.id, "admin_user");
-    assert.strictEqual(verifyVisitorSession(ticket.id, resumed.sessionToken), false);
-    assert.strictEqual(resumeTicketWithRecoveryCode(ticket.ticket_ref, recoveryCode), null);
+  await test("Recovery rotates access and processed deletion revokes all conversation credentials", async () => {
+    const { ticket, sessionToken, recoveryCode } = await createSupportTicket({ preferredLanguage: "en" });
+    assert.strictEqual(await verifyVisitorSession(ticket.id, sessionToken), true);
+    const resumed = (await resumeTicketWithRecoveryCode(ticket.ticket_ref, recoveryCode))!;
+    assert.strictEqual(await verifyVisitorSession(ticket.id, sessionToken), false);
+    assert.strictEqual(await verifyVisitorSession(ticket.id, resumed.sessionToken), true);
+    await processConversationDeletion(ticket.id, "admin_user");
+    assert.strictEqual(await verifyVisitorSession(ticket.id, resumed.sessionToken), false);
+    assert.strictEqual(await resumeTicketWithRecoveryCode(ticket.ticket_ref, recoveryCode), null);
   });
 
   console.log("\n=================================================");
@@ -245,4 +251,3 @@ async function runTestSuite() {
 }
 
 runTestSuite();
-

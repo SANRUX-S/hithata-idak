@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ ticketRe
     }
 
     const { ticketRef } = await params;
-    const ticket = getTicketByRef(ticketRef);
+    const ticket = await getTicketByRef(ticketRef);
 
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ ticketRe
       return NextResponse.json({ error: "Forbidden: You are not authorized to view conversations assigned to other volunteers." }, { status: 403 });
     }
 
-    const messages = getTicketMessages(ticket.id);
+    const messages = await getTicketMessages(ticket.id);
     const typing = getOtherPartyTyping(ticket.id, "supporter");
 
     return NextResponse.json({

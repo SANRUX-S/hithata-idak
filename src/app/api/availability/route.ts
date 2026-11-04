@@ -3,7 +3,7 @@ import { getSystemAvailability } from "@/lib/store";
 
 export async function GET() {
   try {
-    const availability = getSystemAvailability();
+    const availability = await getSystemAvailability();
     return NextResponse.json(availability, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Availability error:", error);

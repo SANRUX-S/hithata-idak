@@ -95,11 +95,13 @@ export default function PortalDashboard() {
 
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const selectedTicketRefRef = useRef<string | null>(null);
+  const activeTicketRef = useRef<SupportTicket | null>(null);
   const nearBottomRef = useRef(true);
   const queueLoadingRef = useRef<AbortSignal | null>(null);
   const ticketLoadingRef = useRef<AbortSignal | null>(null);
   const sendingReplyRef = useRef(false);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const ticketFailuresRef = useRef(0);
 
   // 1. Authenticate Supporter Session
   const checkAuth = useCallback((signal?: AbortSignal) => {
@@ -164,17 +166,27 @@ export default function PortalDashboard() {
       if (res.ok) {
         const data = await res.json();
         if (signal?.aborted || selectedTicketRefRef.current !== selectedTicketRef) return;
+        ticketFailuresRef.current = 0;
+        activeTicketRef.current = data.ticket;
         setActiveTicket(data.ticket);
         setActiveMessages((previous) => data.messages.length >= previous.length ? data.messages : previous);
         setVisitorTyping(data.typing || { isTyping: false, name: "" });
         setChatError("");
       } else {
-        setChatError("This conversation could not be loaded. Check your access or choose another conversation.");
+        ticketFailuresRef.current += 1;
+        if (!activeTicketRef.current && ticketFailuresRef.current >= 2) {
+          setChatError("This conversation could not be loaded. Check your access or choose another conversation.");
+        } else if (ticketFailuresRef.current >= 3) {
+          setChatError("Connection update delayed. Reconnecting automatically; your draft is safe.");
+        }
       }
     }).catch((error: unknown) => {
       if (!signal?.aborted && selectedTicketRefRef.current === selectedTicketRef) {
         console.error("Poll active ticket error", error);
-        setChatError("Connection interrupted. Retrying automatically; your draft is safe.");
+        ticketFailuresRef.current += 1;
+        if (ticketFailuresRef.current >= 3) {
+          setChatError("Connection interrupted. Retrying automatically; your draft is safe.");
+        }
       }
     }).finally(() => {
       if (ticketLoadingRef.current === loadingSignal) ticketLoadingRef.current = null;

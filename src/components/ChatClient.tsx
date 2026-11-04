@@ -162,9 +162,22 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
         setTicket(data.ticket); setMessages(data.messages); setShowKeyNotice(false); setScreen("active");
       } catch (error) {
         if (controller.signal.aborted) return;
-        if (error instanceof ChatRequestError && [401, 404].includes(error.status)) saveSession(null);
+        // Retry once after a brief pause in case serverless cold start was in progress
+        try {
+          await new Promise((r) => setTimeout(r, 1200));
+          if (controller.signal.aborted) return;
+          const retryData = await requestJson<ConversationResponse>(`/api/tickets/${encodeURIComponent(session.reference)}`, {}, controller.signal);
+          if (controller.signal.aborted) return;
+          setTicket(retryData.ticket); setMessages(retryData.messages); setShowKeyNotice(false); setScreen("active");
+          return;
+        } catch {
+          // Both initial and retry attempts failed
+        }
+        if (error instanceof ChatRequestError && error.status === 401) {
+          saveSession(null);
+        }
         setResumeTicketRef(session.reference);
-        setErrorMsg("Your previous conversation couldn’t be reopened. Resume it with your recovery key below.");
+        setErrorMsg("Your previous conversation couldn’t be reopened right now. You can resume it with your recovery key below.");
       } finally { if (!controller.signal.aborted) setIsRestoring(false); }
     }
     void restore();

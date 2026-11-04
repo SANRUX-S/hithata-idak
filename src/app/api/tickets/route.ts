@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
     }
 
-    const { ticket, recoveryCode, sessionToken } = createSupportTicket({
+    const { ticket, recoveryCode, sessionToken } = await createSupportTicket({
       preferredLanguage: parsed.data.preferredLanguage,
       topic: parsed.data.topic,
     });
@@ -41,4 +41,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 });
   }
 }
-

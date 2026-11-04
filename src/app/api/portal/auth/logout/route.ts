@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const token = req.headers.get("x-supporter-session") || cookieStore.get("hid_supporter_session")?.value || "";
 
     if (token) {
-      volunteerLogout(token);
+      await volunteerLogout(token);
     }
 
     cookieStore.delete("hid_supporter_session");
@@ -19,4 +19,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Logout failed" }, { status: 500 });
   }
 }
-

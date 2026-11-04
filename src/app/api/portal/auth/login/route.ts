@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid credentials format" }, { status: 400 });
     }
 
-    const result = volunteerLogin(parsed.data.email, parsed.data.password);
+    const result = await volunteerLogin(parsed.data.email, parsed.data.password);
 
     if (!result) {
       return NextResponse.json({ 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
-    logAdminAudit(result.volunteer.id, "LOGIN", "volunteer", result.volunteer.id, `Role: ${result.volunteer.role}`);
+    await logAdminAudit(result.volunteer.id, "LOGIN", "volunteer", result.volunteer.id, `Role: ${result.volunteer.role}`);
 
     return NextResponse.json({
       volunteer: result.volunteer,
@@ -49,4 +49,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Authentication failed. Please try again." }, { status: 500 });
   }
 }
-

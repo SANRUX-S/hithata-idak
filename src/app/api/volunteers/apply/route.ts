@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please fill in all required fields thoughtfully." }, { status: 400 });
     }
 
-    const applicationId = createVolunteerApplication({
+    const applicationId = await createVolunteerApplication({
       fullName: parsed.data.fullName,
       email: parsed.data.email,
       phone: parsed.data.phone,
@@ -39,4 +39,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to submit application" }, { status: 500 });
   }
 }
-

@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     // Clear typing flag on message send
     setTyping(ticket.id, "visitor", "Visitor", false);
 
-    const message = addMessage(ticket.id, "visitor", "You", parsed.data.content);
+    const message = await addMessage(ticket.id, "visitor", "You", parsed.data.content);
 
     return NextResponse.json({ message });
   } catch (error) {
@@ -43,4 +43,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
-

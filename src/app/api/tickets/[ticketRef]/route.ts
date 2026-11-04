@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ ticketRe
       );
     }
 
-    const messages = getTicketMessages(ticket.id);
+    const messages = await getTicketMessages(ticket.id);
     const typing = getOtherPartyTyping(ticket.id, "visitor");
 
     return NextResponse.json({
