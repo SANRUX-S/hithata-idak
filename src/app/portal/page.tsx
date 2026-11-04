@@ -27,6 +27,7 @@ import {
   Sparkles,
   LifeBuoy,
   FileText,
+  Users2,
 } from "lucide-react";
 import { ApplicationReview, IncidentReview, VolunteerStatusControls, saveAdminAction } from "@/components/AdminControls";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
@@ -42,6 +43,7 @@ import {
   VolunteerApplication,
   AdminAuditEvent,
   UserFeedback,
+  CommunityPost,
 } from "@/lib/types";
 import { PlatformAnalytics } from "@/lib/store";
 
@@ -98,6 +100,9 @@ export default function PortalDashboard() {
   const [showCannedMenu, setShowCannedMenu] = useState(false);
   const [isCleaningData, setIsCleaningData] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
+  const [communityModerationPosts, setCommunityModerationPosts] = useState<CommunityPost[]>([]);
+  const [moderationFilter, setModerationFilter] = useState<"flagged" | "all">("flagged");
+  const [isModerating, setIsModerating] = useState(false);
   const [platformSettings, setPlatformSettings] = useState({
     serviceStatus: "online",
     pilotMode: "true",
@@ -276,6 +281,7 @@ export default function PortalDashboard() {
     if (activeTab === "team") return load<{ volunteers: Volunteer[] }>("/api/portal/admin/volunteers", (data) => setVolunteers(data.volunteers));
     if (activeTab === "applications") return load<{ applications: VolunteerApplication[] }>("/api/portal/admin/applications", (data) => setApplications(data.applications));
     if (activeTab === "feedback") return load<{ feedback: UserFeedback[] }>("/api/portal/admin/feedback", (data) => setUserFeedback(data.feedback));
+    if (activeTab === "community") return load<{ posts: CommunityPost[] }>("/api/portal/admin/community", (data) => setCommunityModerationPosts(data.posts));
     if (activeTab === "settings") return Promise.all([
       load<typeof platformSettings>("/api/portal/admin/settings", setPlatformSettings),
       load<{ auditEvents: AdminAuditEvent[] }>("/api/portal/admin/audit", (data) => setAuditLogs(data.auditEvents)),
@@ -455,6 +461,32 @@ export default function PortalDashboard() {
       setNotesSavedMsg("Connection error saving notes.");
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  // Moderate Community Post
+  const handleModerateCommunityPost = async (id: string, action: "delete" | "hide" | "approve") => {
+    if (action === "delete" && !window.confirm("Permanently delete this community post and all its replies?")) return;
+    setIsModerating(true);
+    setAdminError("");
+    setAdminNotice("");
+    try {
+      const res = await fetch(`/api/portal/admin/community/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getSupporterHeaders() },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        setAdminNotice(`Community post ${action}d successfully.`);
+        void fetchTabData();
+      } else {
+        const err = await res.json();
+        setAdminError(err.error || "Failed to execute moderation action");
+      }
+    } catch {
+      setAdminError("Connection error executing moderation action.");
+    } finally {
+      setIsModerating(false);
     }
   };
 
@@ -696,6 +728,23 @@ export default function PortalDashboard() {
                 onClick={() => setActiveTab("feedback")}
                 className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "feedback" ? "bg-[#25234A] text-white" : "text-[#5B5875] hover:bg-[#FAF9F7]"}`}
               ><Star className="w-4 h-4" /><span>Feedback</span></button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("community")}
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "community"
+                    ? "bg-[#25234A] text-white shadow-xs"
+                    : "text-[#5B5875] hover:bg-[#FAF9F7]"
+                  }`}
+              >
+                <Users2 className="w-4 h-4" />
+                <span>Community Moderation</span>
+                {communityModerationPosts.filter((p) => Boolean(p.is_flagged)).length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                    {communityModerationPosts.filter((p) => Boolean(p.is_flagged)).length}
+                  </span>
+                )}
+              </button>
 
               <button
                 type="button"
@@ -1126,11 +1175,11 @@ export default function PortalDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const crisisText = "ඔබට හෝ ඔබ දන්නා කෙනෙකුට හදිසි මානසික සුව සහනයක් අවශ්‍ය නම්, කරුණාකර ජාතික මානසික සෞඛ්‍ය උපකාරක අංකය 1926 (නොමිලේ, 24/7) හෝ සුමිත්‍රයෝ 011 269 2909 අමතන්න. ඔබගේ ජීවිතය අපට වටිනවා.";
+                                const crisisText = "ඔබට හෝ ඔබ දන්නා කෙනෙකුට හදිසි මානසික සුව සහනයක් අවශ්‍ය නම්, කරුණාකර ජාතික මානසික සෞඛ්‍ය උපකාරක අංකය 1926 (නොමිලේ, 24/7) හෝ CCCline 1333 අමතන්න. ඔබගේ ජීවිතය අපට වටිනවා.";
                                 setReplyText((prev) => prev ? `${prev}\n\n${crisisText}` : crisisText);
                               }}
                               className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100 flex items-center gap-1.5 transition-colors shadow-2xs"
-                              title="Insert 1-Click 1926 and Sumithrayo Crisis Referral"
+                              title="Insert 1-Click 1926 Crisis Referral"
                             >
                               <LifeBuoy className="w-3.5 h-3.5 text-rose-600" />
                               <span>1-Click 1926 Referral</span>
@@ -1297,7 +1346,7 @@ export default function PortalDashboard() {
                   <br />
                   1. Stay calm and convey that their life and feelings matter to you.
                   <br />
-                  2. Provide the verified National Mental Health Helpline: <strong>1926 (Sri Lanka, 24/7 Toll-Free)</strong> or Sumithrayo (011 269 2909).
+                  2. Provide the verified National Mental Health Helpline: <strong>1926 (Sri Lanka, 24/7 Toll-Free)</strong> or CCCline (1333).
                   <br />
                   3. Click the <strong>Flag for Priority / Safety</strong> button in your chat console to alert on-duty supervisors.
                 </p>
@@ -1485,6 +1534,149 @@ export default function PortalDashboard() {
               </section>
             </div>
           </section>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB: COMMUNITY FORUM MODERATION                               */}
+        {/* ============================================================== */}
+        {activeTab === "community" && isSupervisorOrAdmin && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#25234A] flex items-center gap-2">
+                  <Users2 className="w-6 h-6 text-[#2E7D32]" />
+                  <span>Community Peer Space Moderation</span>
+                </h2>
+                <p className="text-sm text-[#5B5875]">
+                  Safeguarding the public community board. Review reported, flagged, or inappropriate discussions and keep peer discussions safe.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModerationFilter("flagged")}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all ${
+                    moderationFilter === "flagged"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : "bg-white text-[#5B5875] border border-[#E8E5DF] hover:bg-[#FAF9F7]"
+                  }`}
+                >
+                  Flagged ({communityModerationPosts.filter((p) => Boolean(p.is_flagged)).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModerationFilter("all")}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all ${
+                    moderationFilter === "all"
+                      ? "bg-[#25234A] text-white"
+                      : "bg-white text-[#5B5875] border border-[#E8E5DF] hover:bg-[#FAF9F7]"
+                  }`}
+                >
+                  All Discussions ({communityModerationPosts.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { void fetchTabData(); }}
+                  className="p-2 rounded-xl bg-white border border-[#E8E5DF] text-[#5B5875] hover:text-[#25234A]"
+                  title="Refresh Community Posts"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Posts List */}
+            <div className="space-y-4">
+              {communityModerationPosts.filter((p) => moderationFilter === "all" || Boolean(p.is_flagged)).length === 0 ? (
+                <div className="p-10 rounded-3xl bg-white border border-[#E8E5DF] text-center text-[#5B5875] space-y-2">
+                  <p className="font-bold text-base text-[#25234A]">No {moderationFilter === "flagged" ? "flagged posts needing review" : "community posts found"}.</p>
+                  <p className="text-sm">The peer community space is clean and respectful.</p>
+                </div>
+              ) : (
+                communityModerationPosts
+                  .filter((p) => moderationFilter === "all" || Boolean(p.is_flagged))
+                  .map((post) => (
+                    <div
+                      key={post.id}
+                      className={`p-6 rounded-3xl bg-white border shadow-xs space-y-4 transition-all ${
+                        post.is_flagged ? "border-rose-300 ring-1 ring-rose-200" : "border-[#E8E5DF]"
+                      }`}
+                    >
+                      {/* Flag Alert Banner */}
+                      {Boolean(post.is_flagged) && (
+                        <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2">
+                            <Flag className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                            <div>
+                              <strong className="font-semibold">Flagged / Reported Post:</strong>{" "}
+                              <span>{post.flag_reason || "User or automated report"}</span>
+                            </div>
+                          </div>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 font-bold uppercase shrink-0">
+                            Needs Review
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-[#25234A]">{post.author_alias}</span>
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#FAF9F7] border border-[#E8E5DF] text-[#5B5875] capitalize">
+                            {post.category}
+                          </span>
+                          <span className="text-xs text-[#5B5875]">
+                            {new Date(post.created_at).toLocaleString()}
+                          </span>
+                          {post.status !== "active" && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-700 font-medium uppercase">
+                              {post.status}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-[#5B5875]">
+                          💬 {post.reply_count || 0} replies • ❤️ {post.reactions_warmth || 0}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h3 className="font-bold text-base text-[#25234A]">{post.title}</h3>
+                        <p className="text-sm text-[#25234A] leading-relaxed whitespace-pre-wrap bg-[#FAF9F7] p-3.5 rounded-2xl border border-[#E8E5DF]/60">
+                          {post.content}
+                        </p>
+                      </div>
+
+                      {/* Moderation Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#E8E5DF]">
+                        <div className="text-xs text-[#5B5875]">
+                          Post ID: <code className="font-mono">{post.id}</code>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {Boolean(post.is_flagged) && (
+                            <button
+                              type="button"
+                              disabled={isModerating}
+                              onClick={() => handleModerateCommunityPost(post.id, "approve")}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 text-xs font-bold transition-all disabled:opacity-50"
+                            >
+                              Dismiss Flag / Keep
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={isModerating}
+                            onClick={() => handleModerateCommunityPost(post.id, "delete")}
+                            className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-xs"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove / Delete Post</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
         )}
 
         {/* ============================================================== */}

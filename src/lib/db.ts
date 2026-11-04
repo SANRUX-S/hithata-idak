@@ -205,6 +205,35 @@ function initSqliteSchema(db: DatabaseSync) {
       details_safe TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS community_posts (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      author_alias TEXT NOT NULL,
+      category TEXT NOT NULL,
+      reactions_warmth INTEGER NOT NULL DEFAULT 0,
+      reactions_alone INTEGER NOT NULL DEFAULT 0,
+      reactions_insight INTEGER NOT NULL DEFAULT 0,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      is_flagged INTEGER NOT NULL DEFAULT 0,
+      flag_reason TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS community_replies (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      author_alias TEXT NOT NULL,
+      is_supporter INTEGER NOT NULL DEFAULT 0,
+      content TEXT NOT NULL,
+      is_flagged INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(post_id) REFERENCES community_posts(id) ON DELETE CASCADE
+    );
   `);
 }
 
@@ -239,6 +268,60 @@ function seedSqliteInitialData(db: DatabaseSync) {
     const supPass2 = hashPassword("SupervisorSafePassword2026!");
     insertVol.run("vol_sup_02", "supervisor@hithataidak.lk", "Duty Supervisor", supPass2.hash, supPass2.salt, "supervisor", 1, 1, 0, now, now);
     insertAvail.run("vol_sup_02", "offline", now);
+  }
+
+  const postCountRow = db.prepare("SELECT COUNT(*) as count FROM community_posts").get() as { count: number } | undefined;
+  if (!postCountRow || postCountRow.count === 0) {
+    const insertPost = db.prepare(`
+      INSERT INTO community_posts (id, title, content, author_alias, category, reactions_warmth, reactions_alone, reactions_insight, is_pinned, is_flagged, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertReply = db.prepare(`
+      INSERT INTO community_replies (id, post_id, author_alias, is_supporter, content, is_flagged, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertPost.run(
+      "post_seed_01",
+      "විභාග සහ අනාගතය ගැන දැනෙන දැඩි බය (Exam Stress & Fear of Failure)",
+      "මම මේ දවස්වල A/L විභාගයට ලෑස්ති වෙන ගමන් ඉන්නේ. මට හිතෙනවා මට මේක කරගන්න බැරි වෙයි කියලා. ගෙදර අයගේ බලාපොරොත්තු වැඩියි. සමහර දවස්වලට කිසිම දෙයක් කරගන්න හිතෙන්නේ නෑ. මට වගේම තවත් අයට මෙහෙම දැනිලා තියෙනවද?",
+      "Anonymous Learner",
+      "academic",
+      12, 18, 5, 1, 0, "active", now, now
+    );
+    insertReply.run(
+      "reply_seed_01",
+      "post_seed_01",
+      "කරුණාවන්ත හිතවතෙක්",
+      0,
+      "ඔබ තනිවෙලා නෑ යාළුවේ. මාත් A/L කරද්දී මේ විදිහටම බය වුණා. එක මොහොතකදී එක දවසක් ගැන විතරක් හිතන්න. ඔබේ ජීවිතය විභාගයකට වඩා ගොඩක් වටිනවා.",
+      0, "active", now
+    );
+    insertReply.run(
+      "reply_seed_02",
+      "post_seed_01",
+      "Duty Supporter",
+      1,
+      "දවසට විනාඩි 10ක් හුස්ම ගැනීමේ අභ්‍යාස කරන්න, මඳක් ඇවිදින්න යන්න. ඔබට කතා කරන්න අවශ්‍ය නම් මේ site එකේ Let's Talk වෙතින් අපට පණිවිඩයක් එවන්න.",
+      0, "active", now
+    );
+
+    insertPost.run(
+      "post_seed_02",
+      "අද මම ලැබූ පුංචි ජයග්‍රහණයක් (A Small Victory Today)",
+      "පහුගිය දවස් 3ම මම කාමරයෙන් එළියට ආවෙත් නෑ. හැබැයි අද උදේ මම නැගිටලා මූණ හෝදලා, උණු තේ එකක් බිව්වා. ඒක පුංචි දෙයක් වුණත් මට අද ලොකු සහනයක් දැනෙනවා. හැමෝටම සුවදායක දවසක් වේවා!",
+      "Hope Seeker",
+      "hope",
+      24, 7, 9, 0, 0, "active", now, now
+    );
+    insertReply.run(
+      "reply_seed_03",
+      "post_seed_02",
+      "Kind Soul",
+      0,
+      "ඒක කොහෙත්ම පුංචි දෙයක් නෙවෙයි! පියවරෙන් පියවර සෙමින් ඉදිරියට යන්න. අපි ඔබ ගැන ගොඩක් ආඩම්බර වෙනවා ❤️",
+      0, "active", now
+    );
   }
 }
 
@@ -397,6 +480,33 @@ export async function ensureNeonSchema(): Promise<void> {
       details_safe TEXT NOT NULL,
       created_at TEXT NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS community_posts (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      author_alias TEXT NOT NULL,
+      category TEXT NOT NULL,
+      reactions_warmth INTEGER NOT NULL DEFAULT 0,
+      reactions_alone INTEGER NOT NULL DEFAULT 0,
+      reactions_insight INTEGER NOT NULL DEFAULT 0,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      is_flagged INTEGER NOT NULL DEFAULT 0,
+      flag_reason TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS community_replies (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      author_alias TEXT NOT NULL,
+      is_supporter INTEGER NOT NULL DEFAULT 0,
+      content TEXT NOT NULL,
+      is_flagged INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(post_id) REFERENCES community_posts(id) ON DELETE CASCADE
+    )`,
   ];
 
   for (const tableSql of tables) {
@@ -435,6 +545,24 @@ export async function ensureNeonSchema(): Promise<void> {
       ('vol_sup_01', 'offline', $1),
       ('vol_sup_02', 'offline', $1)
     ON CONFLICT (volunteer_id) DO NOTHING
+  `, [now]);
+
+  // Seed default community posts in Neon
+  await sql.query(`
+    INSERT INTO community_posts (id, title, content, author_alias, category, reactions_warmth, reactions_alone, reactions_insight, is_pinned, is_flagged, status, created_at, updated_at)
+    VALUES
+      ('post_seed_01', 'විභාග සහ අනාගතය ගැන දැනෙන දැඩි බය (Exam Stress & Fear of Failure)', 'මම මේ දවස්වල A/L විභාගයට ලෑස්ති වෙන ගමන් ඉන්නේ. මට හිතෙනවා මට මේක කරගන්න බැරි වෙයි කියලා. ගෙදර අයගේ බලාපොරොත්තු වැඩියි. සමහර දවස්වලට කිසිම දෙයක් කරගන්න හිතෙන්නේ නෑ. මට වගේම තවත් අයට මෙහෙම දැනිලා තියෙනවද?', 'Anonymous Learner', 'academic', 12, 18, 5, 1, 0, 'active', $1, $1),
+      ('post_seed_02', 'අද මම ලැබූ පුංචි ජයග්‍රහණයක් (A Small Victory Today)', 'පහුගිය දවස් 3ම මම කාමරයෙන් එළියට ආවෙත් නෑ. හැබැයි අද උදේ මම නැගිටලා මූණ හෝදලා, උණු තේ එකක් බිව්වා. ඒක පුංචි දෙයක් වුණත් මට අද ලොකු සහනයක් දැනෙනවා. හැමෝටම සුවදායක දවසක් වේවා!', 'Hope Seeker', 'hope', 24, 7, 9, 0, 0, 'active', $1, $1)
+    ON CONFLICT (id) DO NOTHING
+  `, [now]);
+
+  await sql.query(`
+    INSERT INTO community_replies (id, post_id, author_alias, is_supporter, content, is_flagged, status, created_at)
+    VALUES
+      ('reply_seed_01', 'post_seed_01', 'කරුණාවන්ත හිතවතෙක්', 0, 'ඔබ තනිවෙලා නෑ යාළුවේ. මාත් A/L කරද්දී මේ විදිහටම බය වුණා. එක මොහොතකදී එක දවසක් ගැන විතරක් හිතන්න. ඔබේ ජීවිතය විභාගයකට වඩා ගොඩක් වටිනවා.', 0, 'active', $1),
+      ('reply_seed_02', 'post_seed_01', 'Duty Supporter', 1, 'දවසට විනාඩි 10ක් හුස්ම ගැනීමේ අභ්‍යාස කරන්න, මඳක් ඇවිදින්න යන්න. ඔබට කතා කරන්න අවශ්‍ය නම් මේ site එකේ Let''s Talk වෙතින් අපට පණිවිඩයක් එවන්න.', 0, 'active', $1),
+      ('reply_seed_03', 'post_seed_02', 'Kind Soul', 0, 'ඒක කොහෙත්ම පුංචි දෙයක් නෙවෙයි! පියවරෙන් පියවර සෙමින් ඉදිරියට යන්න. අපි ඔබ ගැන ගොඩක් ආඩම්බර වෙනවා ❤️', 0, 'active', $1)
+    ON CONFLICT (id) DO NOTHING
   `, [now]);
 
   global.__hithata_neon_init_done = true;

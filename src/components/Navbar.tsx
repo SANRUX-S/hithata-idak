@@ -7,9 +7,13 @@ import { HeartHandshake, Menu, X } from "lucide-react";
 import { QuickExitButton } from "@/components/QuickExitButton";
 
 const navLinks = [
-  { href: "/", label: "Home" }, { href: "/chat", label: "Start Chat" },
-  { href: "/story", label: "Our Story" }, { href: "/safety", label: "Safety & Privacy" },
-  { href: "/resources", label: "Help & Resources" }, { href: "/donate", label: "Donate" },
+  { href: "/", label: "Home" },
+  { href: "/chat", label: "Start Chat" },
+  { href: "/community", label: "Community" },
+  { href: "/story", label: "Our Story" },
+  { href: "/safety", label: "Safety & Privacy" },
+  { href: "/resources", label: "Help & Resources" },
+  { href: "/donate", label: "Donate" },
 ];
 type Availability = { status: "available" | "busy" | "offline"; operatingHours: string; pilotMode: boolean };
 

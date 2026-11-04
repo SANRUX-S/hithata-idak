@@ -64,9 +64,9 @@ export const CANNED_RESPONSES: CannedResponse[] = [
     id: "crisis_01",
     category: "crisis",
     categoryLabel: "හදිසි උපකාර (Crisis Referral)",
-    title: "හදිසි මානසික සුවතා ක්ෂණික ඇමතුම් (Helpline 1926 & Sumithrayo)",
-    sinhalaText: "ඔබගේ ආරක්ෂාව සහ යහපැවැත්ම අපිට අංක එකේ වටිනාකමයි. ඔබට දැඩි පීඩනයක් හෝ තමාටම හානි කරගැනීමේ සිතුවිලි ඇති වේ නම්, කරුණාකර ජාතික මානසික සුවතා නොමිලේ ක්ෂණික ඇමතුම් අංකය 1926 (පැය 24 පුරා) හෝ සුමිත්‍රයෝ (011-2692551 / 011-2682535) අමතා ක්ෂණික සහය ලබාගන්න. අපිත් දිගටම මෙහි ඔබ සමඟ රැඳී සිටිනවා.",
-    englishText: "Your safety, health, and wellbeing are paramount. If you are experiencing overwhelming distress or thoughts of self-harm, please reach out immediately to the National Mental Health 24/7 Toll-Free Helpline at 1926 or Sumithrayo at 011-2692551 / 011-2682535 for immediate professional support. We are also staying right here with you.",
+    title: "හදිසි මානසික සුවතා ක්ෂණික ඇමතුම් (Helpline 1926 & CCCline 1333)",
+    sinhalaText: "ඔබගේ ආරක්ෂාව සහ යහපැවැත්ම අපිට අංක එකේ වටිනාකමයි. ඔබට දැඩි පීඩනයක් හෝ තමාටම හානි කරගැනීමේ සිතුවිලි ඇති වේ නම්, කරුණාකර ජාතික මානසික සුවතා නොමිලේ ක්ෂණික ඇමතුම් අංකය 1926 (පැය 24 පුරා, නොමිලේ) හෝ CCCline 1333 අමතා ක්ෂණික සහය ලබාගන්න. අපිත් දිගටම මෙහි ඔබ සමඟ රැඳී සිටිනවා.",
+    englishText: "Your safety, health, and wellbeing are paramount. If you are experiencing overwhelming distress or thoughts of self-harm, please reach out immediately to the National Mental Health 24/7 Toll-Free Helpline at 1926 or CCCline at 1333 for immediate professional support. We are also staying right here with you.",
   },
 
   // 5. Gentle Closing

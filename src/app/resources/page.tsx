@@ -242,10 +242,10 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
       badge: "24/7 Official Helpline",
     },
     {
-      name: "Sumithrayo Befriending Service",
-      number: "011 269 2909 / 011 269 6666",
-      desc: "Pioneering emotional support and suicide prevention charity in Sri Lanka, offering nonjudgmental confidential listening since 1974.",
-      badge: "Befriending Organization",
+      name: "NIMH Psychological Support Center",
+      number: "1926 / 011 257 8234",
+      desc: "Specialized clinical and emotional counseling services provided by the National Institute of Mental Health Sri Lanka.",
+      badge: "National Mental Health Institute",
     },
     {
       name: "CCCline (Courage Compassion Commitment)",

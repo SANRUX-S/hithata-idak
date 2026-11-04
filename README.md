@@ -13,7 +13,7 @@ The service provides a safe, welcoming online space where people experiencing lo
 
 - **Real Human Support:** Real, empathetic human volunteers. No automated bots, generic therapy chatbots, or algorithmic substitutes for human empathy.
 - **Support Boundaries:** Hithata Idak is an **emotional listening and peer-support service**, *not* a medical, diagnostic, psychotherapeutic, or emergency response service. Volunteers do not prescribe medication, diagnose mental illnesses, or replace licensed clinicians.
-- **Immediate Crisis Safeguards:** Prominently surfaces the **1926 Sri Lanka National Mental Health Helpline (Toll-Free, 24/7)**, the National Institute of Mental Health (NIMH), and Sumithrayo (011 269 2909) across all pages.
+- **Immediate Crisis Safeguards:** Prominently surfaces the **1926 Sri Lanka National Mental Health Helpline (Toll-Free, 24/7)**, the National Institute of Mental Health (NIMH), and CCCline 1333 across all pages.
 - **Honest Volunteer Availability:** Displays live supporter availability based on real volunteer presence in the database (`Supporters Available`, `All Supporters Busy`, `Currently Offline`). Never displays artificial online presence.
 - **Controlled Closed-Pilot Mode:** The application features a dedicated, transparent banner indicating pilot phase status until volunteer cohorts undergo full verification and clinical oversight.
 
@@ -54,8 +54,9 @@ The service provides a safe, welcoming online space where people experiencing lo
 1. **Home (`/`)**: Scenic hero with natural light, trust indicators, "You Don't Have to Carry Everything Alone" (6 topic cards), "How It Works" (4 transparent steps), "Why Hithata Idak?", and team message.
 2. **Start Chat (`/chat`)**: Core anonymous messaging system. Language selector (Sinhala, English, Singlish), preference selector, live volunteer availability status, real-time message stream, typing indicators, one-time recovery key banner, "Resume Conversation" flow, and post-chat feedback/data deletion.
 3. **Our Story (`/story`)**: Why we exist, mission & vision, 5 core values (Compassion, Respect, Privacy, Inclusivity, Responsibility), transparent team governance notes, and a working volunteer expression-of-interest onboarding form.
-4. **Safety & Privacy (`/safety`)**: 10 detailed policy sections, Sri Lanka PDPA grounding, emergency hotlines (1926 / Sumithrayo), child/teen safeguarding, and a direct incident reporting form.
+4. **Safety & Privacy (`/safety`)**: 10 detailed policy sections, Sri Lanka PDPA grounding, emergency hotlines (1926 / CCCline 1333), child/teen safeguarding, and a direct incident reporting form.
 5. **Help & Resources (`/resources`)**: 8 evidence-informed self-care guide articles with full reader modal, 10-point FAQ accordion, verified emergency hotlines directory, and general contact/feedback form.
+6. **Community Peer Space (`/community`)**: An anonymous, safe community forum where visitors can share what is on their mind, ask questions, support each other with reactions (Warmth, Not Alone, Insight), with automated safety guardrails and volunteer moderation.
 
 ### Protected Supporter & Admin Dashboard (`/portal`)
 - **Portal Login (`/portal/login`)**: Role-based authentication and MFA flow.

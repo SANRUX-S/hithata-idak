@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx tests/security-suite.ts"
+    "test": "tsx tests/run-all.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

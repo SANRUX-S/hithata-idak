@@ -21,6 +21,10 @@ import {
   VolunteerApplication,
   UserFeedback,
   AdminAuditEvent,
+  CommunityPost,
+  CommunityReply,
+  CommunityCategory,
+  CommunityPostWithReplies,
 } from "./types";
 
 // ==========================================
@@ -884,4 +888,169 @@ export async function purgeOldClosedTickets(retentionDays = 30): Promise<{ purge
   await logAdminAudit(null, "AUTOMATED_RETENTION_CLEANUP", "system", "all", `Purged ${oldTickets.length} closed conversations older than ${retentionDays} days.`);
 
   return { purgedCount: oldTickets.length };
+}
+
+// ==========================================
+// PEER-SUPPORT COMMUNITY BOARD
+// ==========================================
+
+export async function getCommunityPosts(options?: { category?: string; status?: string; includeFlagged?: boolean }): Promise<CommunityPost[]> {
+  let query = `
+    SELECT p.*, COUNT(r.id) as reply_count
+    FROM community_posts p
+    LEFT JOIN community_replies r ON p.id = r.post_id AND r.status != 'deleted'
+  `;
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (options?.includeFlagged) {
+    conditions.push("p.status != 'deleted'");
+  } else if (options?.status) {
+    conditions.push("p.status = ?");
+    params.push(options.status);
+  } else {
+    conditions.push("p.status = 'active'");
+  }
+
+  if (options?.category && options.category !== "all") {
+    conditions.push("p.category = ?");
+    params.push(options.category);
+  }
+
+  if (conditions.length > 0) {
+    query += " WHERE " + conditions.join(" AND ");
+  }
+
+  query += " GROUP BY p.id ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT 50";
+
+  const rows = await queryAll<CommunityPost & { reply_count: string | number }>(query, ...params);
+  return rows.map((r) => ({
+    ...r,
+    reply_count: Number(r.reply_count || 0),
+    is_pinned: Number(r.is_pinned) === 1,
+    is_flagged: Number(r.is_flagged) === 1,
+  }));
+}
+
+export async function getCommunityPostById(id: string): Promise<CommunityPostWithReplies | null> {
+  const post = await queryGet<CommunityPost>(`
+    SELECT * FROM community_posts WHERE id = ? AND status != 'deleted'
+  `, id);
+
+  if (!post) return null;
+
+  const replies = await queryAll<CommunityReply>(`
+    SELECT * FROM community_replies 
+    WHERE post_id = ? AND status != 'deleted'
+    ORDER BY created_at ASC
+  `, id);
+
+  return {
+    ...post,
+    is_pinned: Number(post.is_pinned) === 1,
+    is_flagged: Number(post.is_flagged) === 1,
+    replies: replies.map((rep) => ({
+      ...rep,
+      is_supporter: Number(rep.is_supporter) === 1,
+      is_flagged: Number(rep.is_flagged) === 1,
+    })),
+  };
+}
+
+export async function createCommunityPost(
+  title: string,
+  content: string,
+  authorAlias: string,
+  category: CommunityCategory
+): Promise<CommunityPost> {
+  const id = `post_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  await dbAdapter.run(`
+    INSERT INTO community_posts (
+      id, title, content, author_alias, category,
+      reactions_warmth, reactions_alone, reactions_insight,
+      is_pinned, is_flagged, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 'active', ?, ?)
+  `, [id, title, content, authorAlias, category, now, now]);
+
+  return {
+    id,
+    title,
+    content,
+    author_alias: authorAlias,
+    category,
+    reactions_warmth: 0,
+    reactions_alone: 0,
+    reactions_insight: 0,
+    reply_count: 0,
+    is_pinned: false,
+    is_flagged: false,
+    status: "active",
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export async function addCommunityReply(
+  postId: string,
+  content: string,
+  authorAlias: string,
+  isSupporter = false
+): Promise<CommunityReply> {
+  const id = `reply_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  await dbAdapter.run(`
+    INSERT INTO community_replies (
+      id, post_id, author_alias, is_supporter, content, is_flagged, status, created_at
+    ) VALUES (?, ?, ?, ?, ?, 0, 'active', ?)
+  `, [id, postId, authorAlias, isSupporter ? 1 : 0, content, now]);
+
+  await dbAdapter.run("UPDATE community_posts SET updated_at = ? WHERE id = ?", [now, postId]);
+
+  return {
+    id,
+    post_id: postId,
+    author_alias: authorAlias,
+    is_supporter: isSupporter,
+    content,
+    is_flagged: false,
+    status: "active",
+    created_at: now,
+  };
+}
+
+export async function reactToCommunityPost(
+  postId: string,
+  reactionType: "warmth" | "alone" | "insight"
+): Promise<{ reactions_warmth: number; reactions_alone: number; reactions_insight: number }> {
+  const column = reactionType === "warmth" ? "reactions_warmth" : reactionType === "alone" ? "reactions_alone" : "reactions_insight";
+  await dbAdapter.run(`UPDATE community_posts SET ${column} = ${column} + 1 WHERE id = ?`, [postId]);
+
+  const updated = await queryGet<{ reactions_warmth: number; reactions_alone: number; reactions_insight: number }>(`
+    SELECT reactions_warmth, reactions_alone, reactions_insight FROM community_posts WHERE id = ?
+  `, postId);
+
+  return updated || { reactions_warmth: 0, reactions_alone: 0, reactions_insight: 0 };
+}
+
+export async function reportCommunityPost(postId: string, reason: string): Promise<void> {
+  await dbAdapter.run(`
+    UPDATE community_posts 
+    SET is_flagged = 1, flag_reason = ?, status = 'flagged', updated_at = ?
+    WHERE id = ?
+  `, [reason, new Date().toISOString(), postId]);
+}
+
+export async function moderateCommunityPost(postId: string, action: "hide" | "delete" | "approve"): Promise<void> {
+  const now = new Date().toISOString();
+  if (action === "delete") {
+    await dbAdapter.run("DELETE FROM community_replies WHERE post_id = ?", [postId]);
+    await dbAdapter.run("DELETE FROM community_posts WHERE id = ?", [postId]);
+  } else if (action === "hide") {
+    await dbAdapter.run("UPDATE community_posts SET status = 'hidden', updated_at = ? WHERE id = ?", [now, postId]);
+  } else if (action === "approve") {
+    await dbAdapter.run("UPDATE community_posts SET status = 'active', is_flagged = 0, flag_reason = NULL, updated_at = ? WHERE id = ?", [now, postId]);
+  }
 }

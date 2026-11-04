@@ -190,14 +190,14 @@ export default function SafetyAndPrivacyPage() {
 
               <div className="p-4 rounded-2xl bg-white border border-amber-200 space-y-1">
                 <span className="text-sm font-semibold text-amber-900 uppercase tracking-wider block">
-                  Sumithrayo Emotional Support Helpline
+                  CCCline Crisis & Emotional Support Helpline
                 </span>
-                <a href="tel:+94112692909" className="text-base font-bold text-[#3c3654] hover:underline flex items-center gap-2">
+                <a href="tel:1333" className="text-base font-bold text-[#3c3654] hover:underline flex items-center gap-2">
                   <PhoneCall className="w-4 h-4 text-emerald-700" />
-                  <span>011 269 2909 / 011 269 6666</span>
+                  <span>1333 (Toll-Free, 24/7)</span>
                 </a>
                 <p className="text-base text-[#655f6a]">
-                  Providing compassionate befriending across Sri Lanka since 1974.
+                  Free, confidential telephone befriending and crisis counseling across Sri Lanka.
                 </p>
               </div>
             </div>

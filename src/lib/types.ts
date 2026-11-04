@@ -109,3 +109,44 @@ export interface SystemAvailability {
   pilotMode: boolean;
 }
 
+export type CommunityCategory =
+  | "feelings"
+  | "anxiety"
+  | "relationships"
+  | "academic"
+  | "questions"
+  | "hope";
+
+export interface CommunityPost {
+  id: string;
+  title: string;
+  content: string;
+  author_alias: string;
+  category: CommunityCategory;
+  reactions_warmth: number;
+  reactions_alone: number;
+  reactions_insight: number;
+  reply_count?: number;
+  is_pinned: number | boolean;
+  is_flagged: number | boolean;
+  flag_reason?: string | null;
+  status: "active" | "flagged" | "hidden" | "deleted";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityReply {
+  id: string;
+  post_id: string;
+  author_alias: string;
+  is_supporter: number | boolean;
+  content: string;
+  is_flagged: number | boolean;
+  status: "active" | "flagged" | "hidden" | "deleted";
+  created_at: string;
+}
+
+export interface CommunityPostWithReplies extends CommunityPost {
+  replies: CommunityReply[];
+}
+

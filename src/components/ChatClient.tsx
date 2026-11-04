@@ -163,14 +163,10 @@ EMERGENCY MENTAL HEALTH HELPLINES (SRI LANKA):
 1. National Mental Health Helpline (NIMH Angoda):
    Phone: 1926 (Toll-Free, 24/7, Sinhala, Tamil, English)
 
-2. Sumithrayo Befriending Service:
-   Phone: 011 269 2909 / 011 269 6666 (Daily 9:00 AM - 8:00 PM)
-   Address: 60 Horton Place, Colombo 07
-
-3. CCCline (Courage Compassion Commitment):
+2. CCCline (Courage Compassion Commitment):
    Phone: 1333 (Toll-Free, 24/7 Telephone Befriending)
 
-4. Shanthi Maargam (Adolescent & Youth Safe Space):
+3. Shanthi Maargam (Adolescent & Youth Safe Space):
    Phone: 071 763 9898
 
 EVIDENCE-INFORMED GROUNDING PRACTICES:
