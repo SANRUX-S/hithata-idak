@@ -1,6 +1,6 @@
 import assert from "node:assert";
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = process.env.TARGET_URL || "http://localhost:3000";
 
 async function runE2ETest() {
   console.log("=================================================================");
