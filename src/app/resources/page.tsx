@@ -391,9 +391,9 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
 
           {/* Articles Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredArticles.map((art, idx) => (
+            {filteredArticles.map((art) => (
               <div
-                key={idx}
+                key={art.title}
                 className="p-6 rounded-2xl bg-white border border-[#e5e1db] shadow-none hover:border-[#c9c4ce] transition-all flex flex-col justify-between"
               >
                 <div className="space-y-3">
@@ -413,7 +413,7 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                 <div className="mt-5 pt-4 border-t border-[#e5e1db]/60">
                   <button
                     type="button"
-                    onClick={() => setSelectedArticleIndex(idx)}
+                    onClick={() => setSelectedArticleIndex(articles.indexOf(art))}
                     className="inline-flex items-center gap-1.5 text-sm font-bold text-[#3c3654] hover:text-[#504962]"
                   >
                     <span>Read Full Guide</span>
