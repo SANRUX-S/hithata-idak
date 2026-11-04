@@ -240,7 +240,7 @@ function seedInitialData(db: DatabaseSync) {
       insertVol.run(
         "vol_admin_01",
         "admin@hithataidak.lk",
-        "Lead Supervisor / Admin",
+        "Platform Administrator",
         adminPass.hash,
         adminPass.salt,
         "admin",
@@ -252,12 +252,12 @@ function seedInitialData(db: DatabaseSync) {
       );
       insertAvail.run("vol_admin_01", "offline", now);
 
-      // Supporter Dinithi
+      // Duty Supporter
       const supPass1 = hashPassword("SupporterSafePassword2026!");
       insertVol.run(
         "vol_sup_01",
         "supporter@hithataidak.lk",
-        "Supporter Dinithi",
+        "Duty Supporter",
         supPass1.hash,
         supPass1.salt,
         "supporter",
@@ -269,12 +269,12 @@ function seedInitialData(db: DatabaseSync) {
       );
       insertAvail.run("vol_sup_01", "offline", now);
 
-      // Supervisor Ruwan
+      // Duty Supervisor
       const supPass2 = hashPassword("SupervisorSafePassword2026!");
       insertVol.run(
         "vol_sup_02",
         "supervisor@hithataidak.lk",
-        "Supervisor Ruwan",
+        "Duty Supervisor",
         supPass2.hash,
         supPass2.salt,
         "supervisor",

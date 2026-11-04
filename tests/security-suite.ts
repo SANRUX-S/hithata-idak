@@ -149,14 +149,14 @@ async function runTestSuite() {
     // Visitor sends a message
     addMessage(ticket.id, "visitor", "Visitor", "Hello, is someone here?");
     // Supporter replies
-    addMessage(ticket.id, "supporter", "Volunteer Dinithi", "Hello! I am here and listening.");
+    addMessage(ticket.id, "supporter", "Volunteer Supporter", "Hello! I am here and listening.");
 
     const messages = getTicketMessages(ticket.id);
     // 1 welcome message + 2 conversation messages = 3
     assert.strictEqual(messages.length, 3);
     assert.strictEqual(messages[1].content, "Hello, is someone here?");
     assert.strictEqual(messages[2].content, "Hello! I am here and listening.");
-    assert.strictEqual(messages[2].sender_name, "Volunteer Dinithi");
+    assert.strictEqual(messages[2].sender_name, "Volunteer Supporter");
   });
 
   // 6. Data Shredding / PDPA Permanent Deletion

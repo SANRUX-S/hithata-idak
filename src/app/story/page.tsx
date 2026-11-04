@@ -242,7 +242,7 @@ export default function OurStoryPage() {
                 Founded by passionate Sri Lankan technologists, wellbeing advocates, and community organizers dedicated to bridging the emotional support gap through ethical technology and compassionate peer listening.
               </p>
               <div className="text-sm text-[#655f6a] italic pt-2 border-t border-[#e5e1db]/60">
-                [Founder details and supervisory bios will be expanded as formal governance appointments are gazetted].
+                Founder details and supervisory bios will be published alongside formal governance appointments.
               </div>
             </div>
 
