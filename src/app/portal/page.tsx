@@ -39,6 +39,11 @@ function requestSignal(signal?: AbortSignal) {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
+function getSupporterHeaders(): Record<string, string> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("hid_supporter_session") : null;
+  return token ? { "x-supporter-session": token } : {};
+}
+
 export default function PortalDashboard() {
   const router = useRouter();
 
@@ -98,9 +103,10 @@ export default function PortalDashboard() {
 
   // 1. Authenticate Supporter Session
   const checkAuth = useCallback((signal?: AbortSignal) => {
-    return fetch("/api/portal/auth/me", { cache: "no-store", signal: requestSignal(signal) }).then(async (res) => {
+    return fetch("/api/portal/auth/me", { cache: "no-store", headers: getSupporterHeaders(), signal: requestSignal(signal) }).then(async (res) => {
       if (signal?.aborted) return;
       if (res.status === 401) {
+        if (typeof window !== "undefined") localStorage.removeItem("hid_supporter_session");
         router.push("/portal/login");
         return;
       }
@@ -127,7 +133,7 @@ export default function PortalDashboard() {
     if (queueLoadingRef.current && !queueLoadingRef.current.aborted) return;
     const loadingSignal = requestSignal(signal);
     queueLoadingRef.current = loadingSignal;
-    return fetch("/api/portal/tickets", { cache: "no-store", signal: loadingSignal }).then(async (res) => {
+    return fetch("/api/portal/tickets", { cache: "no-store", headers: getSupporterHeaders(), signal: loadingSignal }).then(async (res) => {
       if (res.ok) {
         const data = await res.json();
         if (!signal?.aborted) setTickets(data.tickets);
@@ -153,7 +159,7 @@ export default function PortalDashboard() {
     if (!selectedTicketRef || (ticketLoadingRef.current && !ticketLoadingRef.current.aborted)) return;
     const loadingSignal = requestSignal(signal);
     ticketLoadingRef.current = loadingSignal;
-    return fetch(`/api/portal/tickets/${selectedTicketRef}`, { cache: "no-store", signal: loadingSignal }).then(async (res) => {
+    return fetch(`/api/portal/tickets/${selectedTicketRef}`, { cache: "no-store", headers: getSupporterHeaders(), signal: loadingSignal }).then(async (res) => {
       if (signal?.aborted || selectedTicketRefRef.current !== selectedTicketRef) return;
       if (res.ok) {
         const data = await res.json();
@@ -199,7 +205,7 @@ export default function PortalDashboard() {
     const isSuperOrAdmin = currentUser.role === "admin" || currentUser.role === "supervisor";
 
     if (!isSuperOrAdmin) return;
-    const options = { cache: "no-store" as const, signal: requestSignal(signal) };
+    const options = { cache: "no-store" as const, headers: getSupporterHeaders(), signal: requestSignal(signal) };
     const load = <T,>(path: string, apply: (data: T) => void) => fetch(path, options)
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load this section. Please refresh.");
@@ -239,6 +245,7 @@ export default function PortalDashboard() {
   // Logout
   const handleLogout = async () => {
     try {
+      if (typeof window !== "undefined") localStorage.removeItem("hid_supporter_session");
       await saveAdminAction("/api/portal/auth/logout", {});
       router.push("/portal/login");
     } catch (error: unknown) { setChatError(error instanceof Error ? error.message : "Unable to sign out. Please try again."); }

@@ -7,9 +7,13 @@ const fieldClass = "w-full rounded-xl border border-[#DAD5E4] bg-white px-3 py-2
 const buttonClass = "rounded-xl bg-[#25234A] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#383466] disabled:cursor-wait disabled:opacity-50";
 
 export async function saveAdminAction(path: string, body: unknown) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("hid_supporter_session") : null;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["x-supporter-session"] = token;
+
   const response = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(15000),
   });
