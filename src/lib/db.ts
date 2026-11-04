@@ -12,9 +12,15 @@ export function getDatabase(): DatabaseSync {
   if (global.__hithata_db) {
     return global.__hithata_db;
   }
-  const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), ".data", "hithata_idak.db");
+  const isServerless = process.env.VERCEL === "1" || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.LAMBDA_TASK_ROOT;
+  const defaultPath = isServerless ? "/tmp/hithata_idak.db" : path.join(process.cwd(), ".data", "hithata_idak.db");
+  const dbPath = process.env.DATABASE_PATH || defaultPath;
   if (dbPath !== ":memory:") {
-    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    try {
+      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    } catch {
+      // Ignore if directory already exists or read-only parent
+    }
   }
   const dbInstance = new DatabaseSync(dbPath);
   try {
