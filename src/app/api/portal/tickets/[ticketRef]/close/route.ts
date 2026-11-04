@@ -1,0 +1,27 @@
+import { NextResponse } from "next/server";
+import { authenticateSupporter } from "@/lib/api-auth";
+import { getTicketByRef, closeTicket, logAdminAudit } from "@/lib/store";
+
+export async function POST(req: Request, { params }: { params: Promise<{ ticketRef: string }> }) {
+  try {
+    const supporter = await authenticateSupporter(req);
+    if (!supporter) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { ticketRef } = await params;
+    const ticket = getTicketByRef(ticketRef);
+    if (!ticket) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+
+    closeTicket(ticket.id, "supporter");
+    logAdminAudit(supporter.id, "CLOSE_TICKET", "ticket", ticket.id, "Conversation marked closed by supporter");
+
+    return NextResponse.json({ ok: true, status: "closed" });
+  } catch (error) {
+    console.error("Supporter close ticket error:", error);
+    return NextResponse.json({ error: "Failed to close conversation" }, { status: 500 });
+  }
+}
+

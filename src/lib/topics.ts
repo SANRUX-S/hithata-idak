@@ -1,0 +1,8 @@
+export const conversationTopics = [
+  { id: "relationships", title: "Relationship & Personal Challenges", shortTitle: "Relationships", sinhala: "සම්බන්ධතා ගැටලු", description: "Breakups, unspoken heartache, or simply figuring out how you feel about someone close to you.", badge: "Heart & connections", tone: "rose" },
+  { id: "family", title: "Family & Friendship Problems", shortTitle: "Family & friends", sinhala: "පවුල සහ මිතුරන්", description: "Family expectations, friendship struggles, or feeling a little disconnected from your people.", badge: "Belonging", tone: "lavender" },
+  { id: "stress", title: "Stress & Overwhelming Feelings", shortTitle: "Stress & worries", sinhala: "ආතතිය සහ පීඩනය", description: "When life feels a little too heavy, thoughts won't slow down, or everything feels like too much.", badge: "Emotional weight", tone: "sage" },
+  { id: "studies", title: "School, Studies & Career Pressure", shortTitle: "Studies & career", sinhala: "අධ්‍යාපනය සහ රැකියාව", description: "Exam worries, deadlines, work pressure, or uncertainty about the path ahead. Let's talk it through.", badge: "Life directions", tone: "blue" },
+  { id: "loneliness", title: "Loneliness & Feeling Misunderstood", shortTitle: "Feeling lonely", sinhala: "හුදෙකලාව සහ තනිකම", description: "Feeling alone, even in a room full of people. Sometimes all you need is someone who understands.", badge: "A listening ear", tone: "lilac" },
+  { id: "anything", title: "Anything Else on Your Mind", shortTitle: "Something else", sinhala: "සිතේ ඇති ඕනෑම දෙයක්", description: "You don't need the right words or a reason to reach out. If it matters to you, it matters to us.", badge: "Open space", tone: "peach" },
+] as const;
