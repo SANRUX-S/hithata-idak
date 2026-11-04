@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateSupporter } from "@/lib/api-auth";
-import { processConversationDeletion } from "@/lib/store";
+import { getTicketById, processConversationDeletion } from "@/lib/store";
 
 export async function POST(req: Request, { params }: { params: Promise<{ ticketId: string }> }) {
   try {
@@ -10,6 +10,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketI
     }
 
     const { ticketId } = await params;
+    const ticket = getTicketById(ticketId);
+    if (!ticket) return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    if (!ticket.deletion_requested) return NextResponse.json({ error: "No deletion request exists for this conversation." }, { status: 400 });
     processConversationDeletion(ticketId, supporter.id);
 
     return NextResponse.json({

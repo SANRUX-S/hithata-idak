@@ -568,12 +568,13 @@ export function listIncidentReports(): IncidentReport[] {
   return queryAll<IncidentReport>("SELECT * FROM incident_reports ORDER BY created_at DESC");
 }
 
-export function updateIncidentStatus(id: string, status: "open" | "under_review" | "resolved", notes?: string): void {
-  db.prepare(`
+export function updateIncidentStatus(id: string, status: "open" | "under_review" | "resolved", notes?: string): boolean {
+  const result = db.prepare(`
     UPDATE incident_reports 
     SET status = ?, resolution_notes = COALESCE(?, resolution_notes)
     WHERE id = ?
-  `).run(status, notes || null, id);
+  `).run(status, notes ?? null, id);
+  return result.changes > 0;
 }
 
 export function createVolunteerApplication(params: {
@@ -599,12 +600,13 @@ export function listVolunteerApplications(): VolunteerApplication[] {
   return queryAll<VolunteerApplication>("SELECT * FROM volunteer_applications ORDER BY created_at DESC");
 }
 
-export function updateVolunteerApplicationStatus(id: string, status: "pending" | "interview_scheduled" | "training" | "approved" | "rejected", notes?: string): void {
-  db.prepare(`
+export function updateVolunteerApplicationStatus(id: string, status: "pending" | "interview_scheduled" | "training" | "approved" | "rejected", notes?: string): boolean {
+  const result = db.prepare(`
     UPDATE volunteer_applications 
     SET status = ?, notes = COALESCE(?, notes)
     WHERE id = ?
-  `).run(status, notes || null, id);
+  `).run(status, notes ?? null, id);
+  return result.changes > 0;
 }
 
 export function createUserFeedback(params: {
@@ -664,11 +666,17 @@ export function createVolunteerAccount(params: {
   };
 }
 
-export function updateVolunteerStatus(id: string, isActive: boolean, isApproved: boolean): void {
+export function updateVolunteerStatus(id: string, isActive: boolean, isApproved: boolean): boolean {
   const now = new Date().toISOString();
-  db.prepare(`
+  const result = db.prepare(`
     UPDATE volunteers SET is_active = ?, is_approved = ?, updated_at = ? WHERE id = ?
   `).run(isActive ? 1 : 0, isApproved ? 1 : 0, now, id);
+  if (!result.changes) return false;
+  if (!isActive || !isApproved) {
+    db.prepare("DELETE FROM volunteer_sessions WHERE volunteer_id = ?").run(id);
+    setVolunteerAvailability(id, "offline");
+  }
+  return true;
 }
 
 export function logAdminAudit(volunteerId: string | null, action: string, targetType: string, targetId: string, detailsSafe: string): void {

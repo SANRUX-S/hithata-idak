@@ -22,6 +22,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
+    if (supporter.role === "supporter" && ticket.assigned_volunteer_id && ticket.assigned_volunteer_id !== supporter.id) {
+      return NextResponse.json({ error: "You cannot change a conversation assigned to another supporter." }, { status: 403 });
+    }
     const body = await req.json();
     const parsed = flagSchema.safeParse(body);
     if (!parsed.success) {

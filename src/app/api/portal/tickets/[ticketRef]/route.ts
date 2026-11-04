@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ ticketRe
     }
 
     // Role check: supervisors and admins can access any ticket; supporters can access unassigned waiting tickets or tickets assigned to them
-    if (supporter.role === "supporter" && ticket.assigned_volunteer_id && ticket.assigned_volunteer_id !== supporter.id) {
+    if (supporter.role === "supporter" && ticket.assigned_volunteer_id !== supporter.id && (ticket.assigned_volunteer_id || ticket.status !== "waiting")) {
       return NextResponse.json({ error: "Forbidden: You are not authorized to view conversations assigned to other volunteers." }, { status: 403 });
     }
 

@@ -3,11 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  BookOpen,
   ChevronDown,
   ChevronUp,
   PhoneCall,
-  ExternalLink,
   Search,
   AlertCircle,
 } from "lucide-react";
@@ -299,38 +297,37 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
   );
 
   return (
-    <div className="flex flex-col bg-[#FAF9F7]">
+    <div className="flex flex-col bg-[#faf9f6]">
       {/* HERO SECTION */}
-      <section className="relative py-20 md:py-24 bg-gradient-to-b from-[#EDE7F6]/50 via-[#FAF9F7] to-[#FAF9F7] border-b border-[#E8E5DF]/60">
+      <section className="relative py-20 md:py-24 bg-[#faf9f6] border-b border-[#e5e1db]/60">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#D4C7E8] text-xs font-semibold text-[#25234A] shadow-2xs">
-            <BookOpen className="w-4 h-4 text-[#25234A]" />
+          <div className="text-sm font-medium tracking-wide text-[#655f6a]">
             <span>Practical Insights & Frequently Asked Questions</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#25234A] tracking-tight">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#3c3654] tracking-tight">
             Helpful Resources for Difficult Days.
           </h1>
 
-          <p className="text-lg sm:text-xl text-[#5B5875] max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-[#655f6a] max-w-2xl mx-auto leading-relaxed">
             Short, accessible, evidence-informed guides and verified professional contacts to support you when life feels heavy.
           </p>
         </div>
       </section>
 
       {/* VERIFIED CRISIS DIRECTORY */}
-      <section className="py-12 bg-white border-b border-[#E8E5DF]">
+      <section className="py-12 bg-white border-b border-[#e5e1db]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3 py-1 rounded-full">
+              <span className="text-sm font-medium tracking-wide text-[#655f6a]">
                 Verified Directory
               </span>
-              <h2 className="text-2xl font-bold text-[#25234A] mt-2">
+              <h2 className="text-2xl font-bold text-[#3c3654] mt-2">
                 Emergency & Professional Support in Sri Lanka
               </h2>
             </div>
-            <p className="text-xs text-[#5B5875] max-w-md">
+            <p className="text-base text-[#655f6a] max-w-md">
               These verified organizations provide free, confidential assistance across Sri Lanka.
             </p>
           </div>
@@ -339,21 +336,21 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
             {directories.map((dir, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-3xl bg-[#FAF9F7] border border-[#E8E5DF] hover:border-[#D4C7E8] shadow-2xs transition-all space-y-3 flex flex-col justify-between"
+                className="p-6 rounded-2xl bg-[#faf9f6] border border-[#e5e1db] hover:border-[#ded9e2] shadow-2xs transition-all space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white border border-[#E8E5DF] text-[#5B5875]">
+                    <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-white border border-[#e5e1db] text-[#655f6a]">
                       {dir.badge}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-[#25234A]">{dir.name}</h3>
-                  <p className="text-xs text-[#5B5875] leading-relaxed">{dir.desc}</p>
+                  <h3 className="text-base font-bold text-[#3c3654]">{dir.name}</h3>
+                  <p className="text-base text-[#655f6a] leading-relaxed">{dir.desc}</p>
                 </div>
-                <div className="pt-3 border-t border-[#E8E5DF]/60">
+                <div className="pt-3 border-t border-[#e5e1db]/60">
                   <a
                     href={`tel:${dir.number.split("/")[0].trim().replace(/\s/g, "")}`}
-                    className="inline-flex items-center gap-2 text-sm font-extrabold text-[#25234A] hover:text-[#383466]"
+                    className="inline-flex items-center gap-2 text-base font-extrabold text-[#3c3654] hover:text-[#504962]"
                   >
                     <PhoneCall className="w-4 h-4 text-emerald-700" />
                     <span>{dir.number}</span>
@@ -366,68 +363,67 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
       </section>
 
       {/* 8 EVIDENCE-INFORMED SELF-CARE ARTICLES */}
-      <section className="py-20 bg-[#FAF9F7]">
+      <section className="py-20 bg-[#faf9f6]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           <div className="text-center max-w-3xl mx-auto space-y-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3.5 py-1 rounded-full">
+            <span className="text-sm font-medium tracking-wide text-[#655f6a]">
               Self-Care & Understanding
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#25234A] tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#3c3654] tracking-tight">
               Evidence-Informed Guides
             </h2>
-            <p className="text-base text-[#5B5875] leading-relaxed">
+            <p className="text-base text-[#655f6a] leading-relaxed">
               Explore short, grounded reads on navigating stress, relationships, boundaries, and emotional awareness.
             </p>
           </div>
 
           {/* Search Bar */}
           <div className="max-w-md mx-auto relative">
-            <Search className="w-4 h-4 text-[#5B5875] absolute left-4 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#655f6a] absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search guides by topic or keyword..."
-              className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#E8E5DF] bg-white text-sm focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] shadow-2xs"
+              className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#e5e1db] bg-white text-base focus:border-[#3c3654] focus:ring-1 focus:ring-[#3c3654] shadow-2xs"
             />
           </div>
 
           {/* Articles Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredArticles.map((art, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                className="p-6 rounded-2xl bg-white border border-[#e5e1db] shadow-none hover:border-[#c9c4ce] transition-all flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-[11px] text-[#5B5875]">
-                    <span className="font-semibold text-[#25234A] px-2 py-0.5 rounded-full bg-[#EDE7F6]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#655f6a]">
+                    <span className="font-medium text-[#655f6a]">
                       {art.category}
                     </span>
                     <span>{art.readTime}</span>
                   </div>
-                  <h3 className="text-lg font-bold text-[#25234A] leading-snug">
+                  <h3 className="text-lg font-bold text-[#3c3654] leading-snug">
                     {art.title}
                   </h3>
-                  <div className="text-xs font-sinhala text-[#5B5875]">{art.sinhala}</div>
-                  <p className="text-xs text-[#5B5875] leading-relaxed">{art.summary}</p>
+                  <div className="text-sm font-sinhala text-[#655f6a]">{art.sinhala}</div>
+                  <p className="text-base text-[#655f6a] leading-relaxed">{art.summary}</p>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-[#E8E5DF]/60">
+                <div className="mt-5 pt-4 border-t border-[#e5e1db]/60">
                   <button
                     type="button"
                     onClick={() => setSelectedArticleIndex(idx)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#25234A] hover:text-[#383466]"
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-[#3c3654] hover:text-[#504962]"
                   >
                     <span>Read Full Guide</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
             ))}
           </div>
 
-          <p className="text-xs text-center text-[#5B5875] italic max-w-xl mx-auto">
+          <p className="text-base text-center text-[#655f6a] italic max-w-xl mx-auto">
             * Note: These educational articles provide everyday self-care reflections and do not guarantee emotional recovery or substitute for clinical medical intervention.
           </p>
         </div>
@@ -436,51 +432,51 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
       {/* ARTICLE MODAL / FULL READER */}
       {selectedArticleIndex !== null && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E8E5DF] max-h-[85vh] overflow-y-auto space-y-5 animate-scaleUp">
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#E8E5DF]">
+          <div className="max-w-2xl w-full bg-white rounded-2xl p-6 sm:p-8 shadow-2xl border border-[#e5e1db] max-h-[85vh] overflow-y-auto space-y-5 animate-scaleUp">
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#e5e1db]">
               <div className="space-y-1">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#EDE7F6] text-[#25234A]">
+                <span className="text-sm font-medium text-[#655f6a]">
                   {articles[selectedArticleIndex].category}
                 </span>
-                <h3 className="text-2xl font-bold text-[#25234A]">
+                <h3 className="text-2xl font-bold text-[#3c3654]">
                   {articles[selectedArticleIndex].title}
                 </h3>
-                <p className="text-xs font-sinhala text-[#5B5875]">
+                <p className="text-base font-sinhala text-[#655f6a]">
                   {articles[selectedArticleIndex].sinhala}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedArticleIndex(null)}
-                className="w-8 h-8 rounded-full bg-[#FAF9F7] border border-[#E8E5DF] text-[#5B5875] hover:text-[#25234A] flex items-center justify-center font-bold text-sm"
+                className="w-8 h-8 rounded-full bg-[#faf9f6] border border-[#e5e1db] text-[#655f6a] hover:text-[#3c3654] flex items-center justify-center font-bold text-base"
               >
                 ✕
               </button>
             </div>
 
-            <div className="prose prose-sm text-[#25234A] space-y-4 leading-relaxed">
+            <div className="prose text-base text-[#3c3654] space-y-4 leading-relaxed">
               {articles[selectedArticleIndex].content.split("\n\n").map((para, pIdx) => {
                 if (para.startsWith("### ")) {
                   return (
-                    <h4 key={pIdx} className="text-base font-bold text-[#25234A] pt-2">
+                    <h4 key={pIdx} className="text-base font-bold text-[#3c3654] pt-2">
                       {para.replace("### ", "")}
                     </h4>
                   );
                 }
                 return (
-                  <p key={pIdx} className="text-xs sm:text-sm text-[#5B5875] leading-relaxed">
+                  <p key={pIdx} className="text-base text-[#655f6a] leading-relaxed">
                     {para}
                   </p>
                 );
               })}
             </div>
 
-            <div className="pt-4 border-t border-[#E8E5DF] flex items-center justify-between">
-              <span className="text-xs text-[#5B5875]">Hithata Idak Wellbeing Series</span>
+            <div className="pt-4 border-t border-[#e5e1db] flex items-center justify-between">
+              <span className="text-sm text-[#655f6a]">Hithata Idak Wellbeing Series</span>
               <button
                 type="button"
                 onClick={() => setSelectedArticleIndex(null)}
-                className="px-5 py-2 rounded-xl bg-[#25234A] text-white text-xs font-semibold"
+                className="px-5 py-2 rounded-xl bg-[#3c3654] text-white text-sm font-semibold"
               >
                 Close Guide
               </button>
@@ -490,16 +486,16 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
       )}
 
       {/* SECTION: FAQ ACCORDION (ALL 10 REQUIRED QUESTIONS) */}
-      <section className="py-20 bg-white border-t border-[#E8E5DF]">
+      <section className="py-20 bg-white border-t border-[#e5e1db]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3.5 py-1 rounded-full">
+            <span className="text-sm font-medium tracking-wide text-[#655f6a]">
               Common Questions
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#25234A]">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#3c3654]">
               Frequently Asked Questions
             </h2>
-            <p className="text-sm text-[#5B5875]">
+            <p className="text-base text-[#655f6a]">
               Everything you need to know about our free emotional listening service.
             </p>
           </div>
@@ -510,21 +506,21 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
               return (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-[#E8E5DF] bg-[#FAF9F7] overflow-hidden transition-all"
+                  className="rounded-2xl border border-[#e5e1db] bg-[#faf9f6] overflow-hidden transition-all"
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                    className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-sm sm:text-base text-[#25234A]"
+                    className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-base text-[#3c3654]"
                   >
                     <span>{faq.q}</span>
-                    <span className="w-6 h-6 rounded-full bg-white border border-[#E8E5DF] flex items-center justify-center shrink-0 text-[#5B5875]">
+                    <span className="w-6 h-6 rounded-full bg-white border border-[#e5e1db] flex items-center justify-center shrink-0 text-[#655f6a]">
                       {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </span>
                   </button>
 
                   {isOpen && (
-                    <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-[#5B5875] leading-relaxed border-t border-[#E8E5DF]/60 bg-white">
+                    <div className="px-5 pb-5 pt-1 text-base text-[#655f6a] leading-relaxed border-t border-[#e5e1db]/60 bg-white">
                       {faq.a}
                     </div>
                   )}
@@ -536,32 +532,32 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
       </section>
 
       {/* SECTION: GENERAL CONTACT & FEEDBACK FORM */}
-      <section className="py-20 bg-[#FAF9F7] border-t border-[#E8E5DF]">
+      <section className="py-20 bg-[#faf9f6] border-t border-[#e5e1db]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3.5 py-1 rounded-full">
+            <span className="text-sm font-medium tracking-wide text-[#655f6a]">
               We Value Your Voice
             </span>
-            <h2 className="text-3xl font-bold text-[#25234A]">Contact & General Feedback</h2>
-            <p className="text-xs sm:text-sm text-[#5B5875] leading-relaxed">
+            <h2 className="text-3xl font-bold text-[#3c3654]">Contact & General Feedback</h2>
+            <p className="text-base text-[#655f6a] leading-relaxed">
               Have questions about our nonprofit project, suggestions for resources, or general website feedback? This form is kept completely separate from private support conversations.
             </p>
           </div>
 
-          <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#E8E5DF] shadow-md space-y-4">
+          <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#e5e1db] shadow-sm space-y-4">
             {feedbackSuccess ? (
               <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
                 <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 mx-auto flex items-center justify-center font-bold">
                   ✓
                 </div>
                 <h3 className="text-lg font-bold text-emerald-900">Thank You for Your Message</h3>
-                <p className="text-xs text-emerald-800 leading-relaxed">
+                <p className="text-base text-emerald-800 leading-relaxed">
                   Your comments help us continue refining our platform to be welcoming, accessible, and safe.
                 </p>
                 <button
                   type="button"
                   onClick={() => setFeedbackSuccess(false)}
-                  className="px-5 py-2 rounded-xl bg-[#25234A] text-white text-xs font-semibold"
+                  className="px-5 py-2 rounded-xl bg-[#3c3654] text-white text-sm font-semibold"
                 >
                   Submit Another Feedback Note
                 </button>
@@ -569,20 +565,20 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
             ) : (
               <form onSubmit={handleFeedbackSubmit} className="space-y-4">
                 {feedbackError && (
-                  <div className="p-3 rounded-xl bg-red-50 text-red-800 text-xs flex items-center gap-2">
+                  <div className="p-3 rounded-xl bg-red-50 text-red-800 text-sm flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{feedbackError}</span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-[#25234A] mb-1.5">
+                  <label className="block text-sm font-bold text-[#3c3654] mb-1.5">
                     Feedback Category *
                   </label>
                   <select
                     value={feedbackType}
                     onChange={(e) => setFeedbackType(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-xs sm:text-sm bg-[#FAF9F7]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#e5e1db] text-base bg-[#faf9f6]"
                   >
                     <option value="general">General Inquiries / Greetings</option>
                     <option value="website_experience">Website Usability & Accessibility</option>
@@ -592,7 +588,7 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#25234A] mb-1.5">
+                  <label className="block text-sm font-bold text-[#3c3654] mb-1.5">
                     Your Overall Impression (1 - 5)
                   </label>
                   <div className="flex gap-2">
@@ -601,10 +597,10 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                         key={star}
                         type="button"
                         onClick={() => setFeedbackRating(star)}
-                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors ${
+                        className={`w-9 h-9 rounded-xl text-sm font-bold transition-colors ${
                           feedbackRating >= star
-                            ? "bg-[#25234A] text-white"
-                            : "bg-[#FAF9F7] text-[#5B5875] border border-[#E8E5DF]"
+                            ? "bg-[#3c3654] text-white"
+                            : "bg-[#faf9f6] text-[#655f6a] border border-[#e5e1db]"
                         }`}
                       >
                         {star}★
@@ -614,7 +610,7 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#25234A] mb-1.5">
+                  <label className="block text-sm font-bold text-[#3c3654] mb-1.5">
                     Your Message / Suggestions *
                   </label>
                   <textarea
@@ -623,10 +619,10 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                     value={feedbackMessage}
                     onChange={(e) => setFeedbackMessage(e.target.value)}
                     placeholder="Share your general feedback or suggestions here..."
-                    className="w-full p-3.5 rounded-xl border border-[#E8E5DF] text-xs sm:text-sm bg-[#FAF9F7] resize-none"
+                    className="w-full p-3.5 rounded-xl border border-[#e5e1db] text-base bg-[#faf9f6] resize-none"
                   />
-                  <p className="text-[11px] text-[#5B5875] mt-1">
-                    * Please do not share private emotional crisis details here. Use our <Link href="/chat" className="underline font-semibold text-[#25234A]">Start Chat</Link> page for confidential support.
+                  <p className="text-base text-[#655f6a] mt-1">
+                    * Please do not share private emotional crisis details here. Use our <Link href="/chat" className="underline font-semibold text-[#3c3654]">Start Chat</Link> page for confidential support.
                   </p>
                 </div>
 
@@ -634,7 +630,7 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                   <button
                     type="submit"
                     disabled={isSubmittingFeedback}
-                    className="w-full py-3 px-6 rounded-2xl text-xs sm:text-sm font-bold text-white bg-[#25234A] hover:bg-[#383466] shadow-sm transition-all disabled:opacity-50"
+                    className="w-full py-3 px-6 rounded-2xl text-base font-bold text-white bg-[#3c3654] hover:bg-[#504962] shadow-sm transition-all disabled:opacity-50"
                   >
                     {isSubmittingFeedback ? "Sending Feedback..." : "Submit Feedback"}
                   </button>

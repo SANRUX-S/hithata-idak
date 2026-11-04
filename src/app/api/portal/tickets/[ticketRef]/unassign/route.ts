@@ -15,6 +15,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
+    if (supporter.role === "supporter" && ticket.assigned_volunteer_id !== supporter.id) {
+      return NextResponse.json({ error: "You can only return conversations assigned to you." }, { status: 403 });
+    }
+    if (ticket.status === "closed") return NextResponse.json({ error: "This conversation is closed." }, { status: 400 });
     unassignTicket(ticket.id);
     logAdminAudit(supporter.id, "UNASSIGN_TICKET", "ticket", ticket.id, "Ticket returned to queue");
 

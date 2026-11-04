@@ -416,7 +416,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
   return (
     <div className="flex-1 flex flex-col bg-[#FAF9F7] py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
-        {restoring && <div role="status" className="flex min-h-60 items-center justify-center gap-3 text-sm text-[#5B5875]"><RefreshCw className="size-5 animate-spin" />Opening your private space…</div>}
+        {restoring && <div role="status" className="flex min-h-60 items-center justify-center gap-3 text-base text-[#5B5875]"><RefreshCw className="size-5 animate-spin" />Opening your private space…</div>}
         {/* ============================================================== */}
         {/* SCREEN 1: INTAKE SCREEN                                        */}
         {/* ============================================================== */}
@@ -424,7 +424,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
           <div className="space-y-8 animate-fadeIn">
             {/* Header Greeting */}
             <div className="text-center space-y-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EDE7F6] border border-[#D4C7E8] text-xs font-semibold text-[#25234A]">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EDE7F6] border border-[#D4C7E8] text-sm font-semibold text-[#25234A]">
                 <HeartHandshake className="w-4 h-4 text-[#25234A]" />
                 <span>Private & Anonymous Human Support</span>
               </div>
@@ -443,31 +443,31 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs uppercase tracking-wider text-[#5B5875] font-semibold">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm uppercase tracking-wider text-[#5B5875] font-semibold">
                       Current Support Status
                     </span>
-                    {!availabilityLoaded && <span className="text-xs text-[#5B5875]">{availabilityError ? "Availability unavailable" : "Checking availability…"}</span>}
+                    {!availabilityLoaded && <span className="text-sm text-[#5B5875]">{availabilityError ? "Availability unavailable" : "Checking availability…"}</span>}
                     {availabilityLoaded && availability.status === "available" && (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-sm font-bold bg-emerald-100 text-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Supporters Available
                       </span>
                     )}
                     {availabilityLoaded && availability.status === "busy" && (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-sm font-bold bg-amber-100 text-amber-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                         All Supporters Busy
                       </span>
                     )}
                     {availabilityLoaded && availability.status === "offline" && (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-sm font-bold bg-slate-100 text-slate-700">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                         Currently Offline
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#5B5875] mt-0.5">
+                  <p className="text-base text-[#5B5875] mt-0.5">
                     {availabilityLoaded ? `Operating Hours: ${availability.operatingHours}` : "You can leave a message. Replies depend on volunteer availability."}
                   </p>
                 </div>
@@ -475,8 +475,8 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
               {availabilityLoaded && availability.status === "offline" && (
                 <div className="text-right">
-                  <span className="text-xs text-[#9C4B64] font-medium block">Outside Hours Notice:</span>
-                  <a href="tel:1926" className="text-xs font-bold text-[#25234A] underline hover:text-[#9C4B64]">
+                  <span className="text-sm text-[#9C4B64] font-medium block">Outside Hours Notice:</span>
+                  <a href="tel:1926" className="text-sm font-bold text-[#25234A] underline hover:text-[#9C4B64]">
                     Call 1926 for 24/7 Crisis Help
                   </a>
                 </div>
@@ -486,7 +486,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
             {/* Main Intake Card */}
             <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#E8E5DF] shadow-md space-y-6">
               {errorMsg && (
-                <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-start gap-2">
+                <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-base flex items-start gap-2">
                   <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
@@ -495,10 +495,10 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
               <form onSubmit={handleStartChat} className="space-y-6">
                 {/* Language Selection */}
                 <div>
-                  <label className="block text-sm font-bold text-[#25234A] mb-2">
+                  <label className="block text-base font-bold text-[#25234A] mb-2">
                     1. Select Your Preferred Conversation Language
                   </label>
-                  <p className="text-xs text-[#5B5875] mb-3">
+                  <p className="text-base text-[#5B5875] mb-3">
                     Our human supporters warmly understand Sinhala, English, and Singlish.
                   </p>
                   <div className="grid grid-cols-2 gap-4">
@@ -512,7 +512,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                       }`}
                     >
                       <span className="text-base font-sinhala font-semibold">සිංහල (Sinhala)</span>
-                      <span className="text-xs text-[#5B5875] mt-1">සිංහල සහ සිංග්ලිෂ් භාෂාවෙන් පිළිතුරු ලැබෙනු ඇත.</span>
+                      <span className="text-sm text-[#5B5875] mt-1">සිංහල සහ සිංග්ලිෂ් භාෂාවෙන් පිළිතුරු ලැබෙනු ඇත.</span>
                     </button>
 
                     <button
@@ -525,15 +525,15 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                       }`}
                     >
                       <span className="text-base font-semibold">English</span>
-                      <span className="text-xs text-[#5B5875] mt-1">Conversations conducted in clear English.</span>
+                      <span className="text-sm text-[#5B5875] mt-1">Conversations conducted in clear English.</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Conversation Preferences (Optional) */}
                 <div>
-                  <label className="block text-sm font-bold text-[#25234A] mb-2">
-                    2. What’s on your mind? <span className="text-xs font-normal text-[#5B5875]">(Optional)</span>
+                  <label className="block text-base font-bold text-[#25234A] mb-2">
+                    2. What’s on your mind? <span className="text-sm font-normal text-[#5B5875]">(Optional)</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {topicOptions.map((opt) => (
@@ -542,7 +542,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                         type="button"
                         aria-pressed={topic === opt.title}
                         onClick={() => setTopic(topic === opt.title ? "" : opt.title)}
-                        className={`p-3 rounded-xl border text-xs sm:text-sm text-left transition-all ${
+                        className={`p-3 rounded-xl border text-base text-left transition-all ${
                           topic === opt.title
                             ? "border-[#25234A] bg-[#EDE7F6] text-[#25234A] font-semibold"
                             : "border-[#E8E5DF] hover:bg-[#FAF9F7] text-[#5B5875]"
@@ -555,13 +555,13 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                 </div>
 
                 <div>
-                  <label htmlFor="chat-topic" className="mb-2 block text-sm font-semibold text-[#25234A]">Or tell us in your own words</label>
-                  <textarea id="chat-topic" rows={2} maxLength={200} value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="I’ve had a difficult day, and I’d like to talk…" className="w-full resize-y rounded-xl border border-[#E8E5DF] bg-[#FAF9F7] p-3.5 text-sm focus:border-[#9a84b8]" />
-                  <p className="mt-1 text-right text-[10px] text-[#5B5875]">{topic.length}/200 · You can also skip this.</p>
+                  <label htmlFor="chat-topic" className="mb-2 block text-base font-semibold text-[#25234A]">Or tell us in your own words</label>
+                  <textarea id="chat-topic" rows={2} maxLength={200} value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="I’ve had a difficult day, and I’d like to talk…" className="w-full resize-y rounded-xl border border-[#E8E5DF] bg-[#FAF9F7] p-3.5 text-base focus:border-[#9a84b8]" />
+                  <p className="mt-1 text-right text-base text-[#5B5875]">{topic.length}/200 · You can also skip this.</p>
                 </div>
 
                 {/* Privacy Assurance Notice */}
-                <div className="p-4 rounded-2xl bg-[#FAF9F7] border border-[#E8E5DF] text-xs text-[#5B5875] space-y-1.5 leading-relaxed">
+                <div className="p-4 rounded-2xl bg-[#FAF9F7] border border-[#E8E5DF] text-sm text-[#5B5875] space-y-1.5 leading-relaxed">
                   <div className="flex items-center gap-1.5 text-[#25234A] font-semibold">
                     <Shield className="w-4 h-4 text-[#383466]" />
                     <span>Privacy Safeguards</span>
@@ -600,9 +600,9 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
               </form>
 
               <div className="rounded-2xl border border-[#dce9df] bg-[#f4f9f5] p-4">
-                <p className="flex items-center gap-2 text-sm font-bold text-[#3B6B4A]"><MessageCircle className="size-4" />Prefer WhatsApp?</p>
-                <p className="mt-2 text-xs leading-6 text-[#5B5875]">{whatsappHref ? "Open a WhatsApp chat, then use its call button if you’d prefer to talk. WhatsApp shares your phone number with our team. Your website messages stay here and are not transferred automatically." : "WhatsApp support is being set up. You can use our private website chat now."}</p>
-                {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#3B6B4A]">Chat or call on WhatsApp<ExternalLink className="size-3" /></a>}
+                <p className="flex items-center gap-2 text-base font-bold text-[#3B6B4A]"><MessageCircle className="size-4" />Prefer WhatsApp?</p>
+                <p className="mt-2 text-base leading-6 text-[#5B5875]">{whatsappHref ? "Open a WhatsApp chat, then use its call button if you’d prefer to talk. WhatsApp shares your phone number with our team. Your website messages stay here and are not transferred automatically." : "WhatsApp support is being set up. You can use our private website chat now."}</p>
+                {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-[#3B6B4A]">Chat or call on WhatsApp<ExternalLink className="size-3" /></a>}
               </div>
 
               {/* Resume Existing Conversation Link */}
@@ -610,7 +610,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                 <button
                   type="button"
                   onClick={() => setScreen("resuming")}
-                  className="text-xs font-semibold text-[#25234A] hover:text-[#383466] underline inline-flex items-center gap-1.5"
+                  className="text-sm font-semibold text-[#25234A] hover:text-[#383466] underline inline-flex items-center gap-1.5"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
                   <span>Already have a Ticket Reference & Recovery Key? Resume conversation</span>
@@ -630,14 +630,14 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                 <KeyRound className="w-6 h-6" />
               </div>
               <h2 className="text-2xl font-bold text-[#25234A]">Resume Your Conversation</h2>
-              <p className="text-xs sm:text-sm text-[#5B5875]">
+              <p className="text-base text-[#5B5875]">
                 Enter your Ticket Reference and the private Recovery Key generated when you started.
               </p>
             </div>
 
             <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#E8E5DF] shadow-md space-y-5">
               {resumeError && (
-                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm flex items-start gap-2">
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-base flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{resumeError}</span>
                 </div>
@@ -645,7 +645,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
               <form onSubmit={handleResumeChat} className="space-y-4">
                 <div>
-                  <label htmlFor="resume-reference" className="block text-xs font-bold uppercase tracking-wider text-[#25234A] mb-1.5">
+                  <label htmlFor="resume-reference" className="block text-sm font-bold uppercase tracking-wider text-[#25234A] mb-1.5">
                     Ticket Reference (e.g. HID-7F2K9M)
                   </label>
                   <input
@@ -656,12 +656,12 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     value={resumeTicketRef}
                     onChange={(e) => setResumeTicketRef(e.target.value)}
                     placeholder="HID-XXXXXX"
-                    className="w-full px-4 py-3 rounded-xl border border-[#E8E5DF] focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] text-sm uppercase font-mono"
+                    className="w-full px-4 py-3 rounded-xl border border-[#E8E5DF] focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] text-base uppercase font-mono"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="resume-key" className="block text-xs font-bold uppercase tracking-wider text-[#25234A] mb-1.5">
+                  <label htmlFor="resume-key" className="block text-sm font-bold uppercase tracking-wider text-[#25234A] mb-1.5">
                     Private Recovery Key (e.g. REC-XXXX-XXXX-XXXX)
                   </label>
                   <input
@@ -675,9 +675,9 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     value={resumeRecoveryCode}
                     onChange={(e) => setResumeRecoveryCode(e.target.value)}
                     placeholder="REC-XXXX-XXXX-XXXX"
-                    className="w-full px-4 py-3 rounded-xl border border-[#E8E5DF] focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] text-sm font-mono"
+                    className="w-full px-4 py-3 rounded-xl border border-[#E8E5DF] focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] text-base font-mono"
                   />
-                  <p className="text-[11px] text-[#5B5875] mt-1.5">
+                  <p className="text-base text-[#5B5875] mt-1.5">
                     * For your security, a ticket reference alone NEVER grants access to private conversation messages.
                   </p>
                 </div>
@@ -686,14 +686,14 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                   <button
                     type="submit"
                     disabled={isResuming}
-                    className="flex-1 py-3.5 px-6 rounded-xl text-sm font-bold text-white bg-[#25234A] hover:bg-[#383466] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 py-3.5 px-6 rounded-xl text-base font-bold text-white bg-[#25234A] hover:bg-[#383466] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isResuming ? "Verifying..." : "Resume Conversation"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setScreen("intake")}
-                    className="py-3.5 px-5 rounded-xl text-sm font-semibold text-[#5B5875] hover:bg-[#FAF9F7] border border-[#E8E5DF]"
+                    className="py-3.5 px-5 rounded-xl text-base font-semibold text-[#5B5875] hover:bg-[#FAF9F7] border border-[#E8E5DF]"
                   >
                     Cancel
                   </button>
@@ -707,24 +707,24 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
         {/* SCREEN 3: ACTIVE CONVERSATION                                  */}
         {/* ============================================================== */}
         {!restoring && screen === "active" && ticket && (
-          <div className="flex h-[calc(100dvh-180px)] min-h-[540px] max-h-[900px] flex-col bg-white rounded-3xl border border-[#E8E5DF] shadow-md overflow-hidden animate-fadeIn">
+          <div className="flex h-[calc(100dvh-180px)] min-h-[640px] max-h-[900px] flex-col bg-white rounded-3xl border border-[#E8E5DF] shadow-md overflow-hidden animate-fadeIn">
             {/* Ticket Header & Status Bar */}
             <div className="p-4 sm:px-6 bg-[#FAF9F7] border-b border-[#E8E5DF] flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#EDE7F6] border border-[#D4C7E8] flex items-center justify-center text-[#25234A] font-bold shrink-0">
                   <HeartHandshake className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#25234A]">Hithata Idak</span>
-                    <span className="text-xs px-2 py-0.5 rounded-md bg-[#EDE7F6] text-[#25234A] font-mono font-semibold">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-base font-bold text-[#25234A]">Hithata Idak</span>
+                    <span className="text-sm px-2 py-0.5 rounded-md bg-[#EDE7F6] text-[#25234A] font-mono font-semibold">
                       {ticket.ticket_ref}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-md bg-white border border-[#E8E5DF] text-[#5B5875] capitalize">
+                    <span className="text-sm px-2 py-0.5 rounded-md bg-white border border-[#E8E5DF] text-[#5B5875] capitalize">
                       {ticket.preferred_language === "si" ? "සිංහල" : "English"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-[#5B5875]">
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-sm text-[#5B5875]">
                     <span>Supporter: </span>
                     <span className="font-semibold text-[#25234A]">
                       {ticket.assigned_volunteer_name || "Waiting for a volunteer"}
@@ -734,10 +734,10 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
               </div>
 
               {/* Status Badge & Control Buttons */}
-              <div className="flex items-center gap-2">
-                {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" title="Chat in WhatsApp, then use its call button. Your phone number is shared; website messages stay here." className="inline-flex items-center gap-1 rounded-xl border border-[#dce9df] bg-[#f4f9f5] px-2.5 py-1.5 text-xs font-semibold text-[#3B6B4A]"><MessageCircle className="size-3.5" /><span>WhatsApp</span><ExternalLink className="size-3" /></a>}
+              <div className="flex flex-wrap items-center gap-2">
+                {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" title="Chat in WhatsApp, then use its call button. Your phone number is shared; website messages stay here." className="inline-flex items-center gap-1 rounded-xl border border-[#dce9df] bg-[#f4f9f5] px-2.5 py-1.5 text-sm font-semibold text-[#3B6B4A]"><MessageCircle className="size-3.5" /><span>WhatsApp</span><ExternalLink className="size-3" /></a>}
                 {/* Status Indicator */}
-                <div className="text-xs font-semibold px-3 py-1 rounded-full border bg-white shadow-2xs">
+                <div className="text-sm font-semibold px-3 py-1 rounded-full border bg-white shadow-2xs">
                   {ticket.status === "waiting" && <span className="text-amber-700">Waiting for Supporter</span>}
                   {ticket.status === "assigned" && <span className="text-blue-700">Supporter Joined</span>}
                   {ticket.status === "active" && <span className="text-emerald-700">Conversation Active</span>}
@@ -751,7 +751,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     type="button"
                     onClick={handleCloseConversation}
                     disabled={isClosing}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
+                    className="text-sm font-semibold px-3 py-1.5 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
                   >
                     {isClosing ? "Ending…" : "End Chat"}
                   </button>
@@ -759,7 +759,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                   <button
                     type="button"
                     onClick={() => setShowDeleteModal(true)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-xl text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors flex items-center gap-1"
+                    className="text-sm font-semibold px-3 py-1.5 rounded-xl text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors flex items-center gap-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Data</span>
@@ -770,7 +770,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
             {/* One-Time Recovery Key Alert Banner */}
             {recoveryCode && showKeyNotice && (
-              <div className="p-4 bg-[#EDE7F6] border-b border-[#D4C7E8] text-xs text-[#25234A]">
+              <div className="p-4 bg-[#EDE7F6] border-b border-[#D4C7E8] text-sm text-[#25234A]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5 font-bold">
@@ -780,8 +780,8 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     <p className="text-[#5B5875]">
                       Save this key and your Ticket Reference ({ticket.ticket_ref}) somewhere private to return on another device. This tab can reopen your conversation after a refresh.
                     </p>
-                    <div className="pt-1 flex items-center gap-2">
-                      <code className="px-3 py-1 rounded-md bg-white border border-[#D4C7E8] font-mono font-bold text-xs select-all">
+                    <div className="pt-1 flex flex-wrap items-center gap-2">
+                      <code className="px-3 py-1 rounded-md bg-white border border-[#D4C7E8] font-mono font-bold text-sm select-all">
                         {recoveryCode}
                       </code>
                       <button
@@ -797,7 +797,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                   <button
                     type="button"
                     onClick={() => setShowKeyNotice(false)}
-                    className="text-xs text-[#5B5875] hover:text-[#25234A] p-1 font-bold"
+                    className="text-sm text-[#5B5875] hover:text-[#25234A] p-1 font-bold"
                     aria-label="Dismiss key banner"
                   >
                     ✕
@@ -807,10 +807,10 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
             )}
 
             {/* Closed Notice Bar */}
-            {connectionError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 bg-amber-50 px-4 py-2 text-xs text-amber-800"><span>{connectionError}</span><button type="button" onClick={() => setPollVersion((value) => value + 1)} className="font-bold underline">Retry now</button><button type="button" onClick={() => { setResumeTicketRef(ticket.ticket_ref); setScreen("resuming"); }} className="font-bold underline">Use recovery key</button></div>}
-            {actionError && !showFeedbackModal && !showDeleteModal && <p role="alert" className="shrink-0 bg-rose-50 px-4 py-2 text-xs text-rose-800">{actionError}</p>}
+            {connectionError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 bg-amber-50 px-4 py-2 text-sm text-amber-800"><span>{connectionError}</span><button type="button" onClick={() => setPollVersion((value) => value + 1)} className="font-bold underline">Retry now</button><button type="button" onClick={() => { setResumeTicketRef(ticket.ticket_ref); setScreen("resuming"); }} className="font-bold underline">Use recovery key</button></div>}
+            {actionError && !showFeedbackModal && !showDeleteModal && <p role="alert" className="shrink-0 bg-rose-50 px-4 py-2 text-base text-rose-800">{actionError}</p>}
             {ticket.status === "closed" && (
-              <div className="p-3 bg-slate-100 border-b border-slate-200 text-center text-xs text-slate-700 flex items-center justify-center gap-2">
+              <div className="p-3 bg-slate-100 border-b border-slate-200 text-center text-sm text-slate-700 flex flex-wrap items-center justify-center gap-2">
                 <span>This conversation has been closed.</span>
                 {!feedbackSubmitted && (
                   <button
@@ -834,7 +834,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
             {/* Message Stream */}
             <div className="relative min-h-0 flex-1">
-            <div ref={messagesRef} role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions" onScroll={(event) => { const node = event.currentTarget; stickToBottomRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; if (stickToBottomRef.current) setHasNewMessages(false); }} className="h-full p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4" style={{ scrollBehavior: "auto" }}>
+            <div ref={messagesRef} tabIndex={0} role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions" onScroll={(event) => { const node = event.currentTarget; stickToBottomRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; if (stickToBottomRef.current) setHasNewMessages(false); }} className="h-full p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4" style={{ scrollBehavior: "auto" }}>
               {messages.map((msg) => {
                 const isVisitor = msg.sender_role === "visitor";
                 const isSystem = msg.sender_role === "system";
@@ -842,7 +842,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                 if (isSystem) {
                   return (
                     <div key={msg.id} className="flex justify-center my-2">
-                      <div className="max-w-md px-4 py-2 rounded-2xl bg-[#EDE7F6]/60 border border-[#D4C7E8] text-xs text-[#5B5875] text-center leading-relaxed">
+                      <div className="max-w-md px-4 py-2 rounded-2xl bg-[#EDE7F6]/60 border border-[#D4C7E8] text-sm text-[#5B5875] text-center leading-relaxed">
                         {msg.content}
                       </div>
                     </div>
@@ -854,7 +854,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     key={msg.id}
                     className={`flex flex-col ${isVisitor ? "items-end" : "items-start"}`}
                   >
-                    <div className="flex items-center gap-2 mb-1 text-[11px] text-[#5B5875] px-1">
+                    <div className="flex items-center gap-2 mb-1 text-sm text-[#5B5875] px-1">
                       <span className="font-semibold text-[#25234A]">
                         {isVisitor ? "You" : msg.sender_name}
                       </span>
@@ -865,7 +865,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     </div>
 
                     <div
-                      className={`max-w-[85%] sm:max-w-lg px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-2xs ${
+                      className={`max-w-[85%] sm:max-w-lg px-4 py-3 rounded-2xl text-base leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-2xs ${
                         isVisitor
                           ? "bg-[#25234A] text-white rounded-br-xs"
                           : "bg-[#EDE7F6] text-[#25234A] rounded-bl-xs border border-[#D4C7E8]/70"
@@ -879,21 +879,21 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
               {/* Real-time Typing Indicator */}
               {otherPartyTyping.isTyping && (
-                <div className="flex items-center gap-2 text-xs text-[#5B5875] italic py-1 px-2 animate-pulse">
+                <div className="flex items-center gap-2 text-sm text-[#5B5875] italic py-1 px-2 animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-[#5B5875]" />
                   <span>{otherPartyTyping.name || "Supporter"} is typing...</span>
                 </div>
               )}
 
             </div>
-            {hasNewMessages && <button type="button" onClick={() => { stickToBottomRef.current = true; if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight; setHasNewMessages(false); }} className="absolute bottom-3 right-4 flex items-center gap-2 rounded-full border border-[#D4C7E8] bg-white px-3 py-2 text-xs font-semibold shadow-md">Latest messages ↓</button>}
+            {hasNewMessages && <button type="button" onClick={() => { stickToBottomRef.current = true; if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight; setHasNewMessages(false); }} className="absolute bottom-3 right-4 flex items-center gap-2 rounded-full border border-[#D4C7E8] bg-white px-3 py-2 text-sm font-semibold shadow-md">Latest messages ↓</button>}
             </div>
 
             {/* Input Bar */}
             <div className="shrink-0 p-3 sm:p-4 bg-[#FAF9F7] border-t border-[#E8E5DF]">
               {!conversationEnded ? (
                 <form onSubmit={handleSendMessage} className="space-y-2">
-                  {sendError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{sendError}</p>}
+                  {sendError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-base text-rose-800">{sendError}</p>}
                   <div className="relative flex items-end gap-2">
                     <label htmlFor="chat-message" className="sr-only">Your message</label>
                     <textarea
@@ -911,7 +911,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                         }
                       }}
                       placeholder="Write in Sinhala, English, or Singlish…"
-                      className="min-w-0 flex-1 p-3.5 rounded-2xl border border-[#E8E5DF] focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] text-base sm:text-sm resize-none bg-white"
+                      className="min-w-0 flex-1 p-3.5 rounded-2xl border border-[#E8E5DF] focus:border-[#25234A] focus:ring-1 focus:ring-[#25234A] text-base resize-none bg-white"
                     />
 
                     <button
@@ -923,13 +923,13 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                       {isSending ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-[#5B5875] px-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#5B5875] px-1">
                     <span>Supports Sinhala (යුනිකෝඩ්), English, and Singlish.</span>
                     <span>{inputText.length > 2700 ? `${inputText.length}/3000` : "Private conversation"}</span>
                   </div>
                 </form>
               ) : (
-                <div className="text-center py-2 text-xs text-[#5B5875]">
+                <div className="text-center py-2 text-sm text-[#5B5875]">
                   This conversation is closed. You can{" "}
                   <button
                     type="button"
@@ -955,13 +955,13 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
         {showFeedbackModal && (
           <ChatModal label="Conversation feedback" onClose={() => setShowFeedbackModal(false)}>
             <div className="max-h-[90dvh] overflow-y-auto max-w-md w-full bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[#E8E5DF] space-y-4 animate-scaleUp">
-              {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{actionError}</p>}
+              {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-base text-rose-800">{actionError}</p>}
               <div className="text-center space-y-1">
                 <div className="w-10 h-10 rounded-2xl bg-[#EDE7F6] text-[#25234A] mx-auto flex items-center justify-center">
                   <Heart className="w-5 h-5" />
                 </div>
                 <h3 className="text-xl font-bold text-[#25234A]">How Was Your Experience?</h3>
-                <p className="text-xs text-[#5B5875]">
+                <p className="text-base text-[#5B5875]">
                   Feedback is voluntary and completely anonymous. It helps us support others better.
                 </p>
               </div>
@@ -969,7 +969,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
               {!feedbackSubmitted ? (
                 <form onSubmit={handleSubmitFeedback} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-[#5B5875] mb-2 text-center">
+                    <label className="block text-sm font-semibold text-[#5B5875] mb-2 text-center">
                       Did you feel heard and respected?
                     </label>
                     <div className="flex justify-center gap-2">
@@ -978,7 +978,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                           key={star}
                           type="button"
                           onClick={() => setFeedbackRating(star)}
-                          className={`w-10 h-10 rounded-xl text-sm font-bold flex items-center justify-center transition-colors ${
+                          className={`w-10 h-10 rounded-xl text-base font-bold flex items-center justify-center transition-colors ${
                             feedbackRating >= star
                               ? "bg-[#25234A] text-white"
                               : "bg-[#FAF9F7] text-[#5B5875] border border-[#E8E5DF]"
@@ -991,7 +991,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                   </div>
 
                   <div>
-                    <label htmlFor="chat-feedback" className="block text-xs font-semibold text-[#5B5875] mb-1.5">
+                    <label htmlFor="chat-feedback" className="block text-sm font-semibold text-[#5B5875] mb-1.5">
                       Any thoughts or gentle suggestions? (Optional)
                     </label>
                     <textarea
@@ -1001,7 +1001,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                       value={feedbackText}
                       onChange={(e) => setFeedbackText(e.target.value)}
                       placeholder="Share your thoughts..."
-                      className="w-full p-3 rounded-xl border border-[#E8E5DF] text-xs resize-none"
+                      className="w-full p-3 rounded-xl border border-[#E8E5DF] text-sm resize-none"
                     />
                   </div>
 
@@ -1009,14 +1009,14 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     <button
                       type="submit"
                       disabled={isSavingFeedback}
-                      className="flex-1 py-2.5 rounded-xl bg-[#25234A] text-white text-xs font-bold"
+                      className="flex-1 py-2.5 rounded-xl bg-[#25234A] text-white text-sm font-bold"
                     >
                       {isSavingFeedback ? "Saving…" : "Submit Feedback"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowFeedbackModal(false)}
-                      className="px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-xs font-medium text-[#5B5875]"
+                      className="px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-sm font-medium text-[#5B5875]"
                     >
                       Skip
                     </button>
@@ -1024,13 +1024,13 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                 </form>
               ) : (
                 <div className="text-center py-4 space-y-3">
-                  <p className="text-sm font-semibold text-emerald-800">
+                  <p className="text-base font-semibold text-emerald-800">
                     Thank you for sharing your feedback with us.
                   </p>
                   <button
                     type="button"
                     onClick={() => setShowFeedbackModal(false)}
-                    className="px-5 py-2 rounded-xl bg-[#25234A] text-white text-xs font-semibold"
+                    className="px-5 py-2 rounded-xl bg-[#25234A] text-white text-sm font-semibold"
                   >
                     Close
                   </button>
@@ -1046,20 +1046,20 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
         {showDeleteModal && (
           <ChatModal label="Request conversation deletion" onClose={() => setShowDeleteModal(false)}>
             <div className="max-h-[90dvh] overflow-y-auto max-w-md w-full bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[#E8E5DF] space-y-4 animate-scaleUp">
-              {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{actionError}</p>}
+              {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-base text-rose-800">{actionError}</p>}
               <div className="text-center space-y-1">
                 <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-700 mx-auto flex items-center justify-center">
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <h3 className="text-xl font-bold text-[#25234A]">Request Data Deletion</h3>
-                <p className="text-xs text-[#5B5875]">
+                <p className="text-base text-[#5B5875]">
                   Ask the privacy team to permanently remove your conversation and its recovery credentials.
                 </p>
               </div>
 
               {!deleteSuccess ? (
                 <div className="space-y-4">
-                  <p className="text-xs text-[#5B5875] leading-relaxed">
+                  <p className="text-base text-[#5B5875] leading-relaxed">
                     Your request will be queued for the privacy team. After they process it, the messages and recovery credentials cannot be recovered.
                   </p>
                   <div className="flex gap-2">
@@ -1067,14 +1067,14 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                       type="button"
                       onClick={handleRequestDeletion}
                       disabled={isDeleting}
-                      className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold"
+                      className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-bold"
                     >
                       {isDeleting ? "Processing..." : "Request Permanent Deletion"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowDeleteModal(false)}
-                      className="px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-xs font-medium text-[#5B5875]"
+                      className="px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-sm font-medium text-[#5B5875]"
                     >
                       Cancel
                     </button>
@@ -1082,7 +1082,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                 </div>
               ) : (
                 <div className="text-center py-4 space-y-3">
-                  <p className="text-xs font-medium text-emerald-800 leading-relaxed">
+                  <p className="text-base font-medium text-emerald-800 leading-relaxed">
                     Your deletion request has been queued. The privacy team will permanently remove your messages and access credentials when they process it.
                   </p>
                   <button
@@ -1093,7 +1093,7 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                       saveSession(null); setMessages([]); setInputText("");
                       setScreen("intake");
                     }}
-                    className="px-5 py-2 rounded-xl bg-[#25234A] text-white text-xs font-semibold"
+                    className="px-5 py-2 rounded-xl bg-[#25234A] text-white text-sm font-semibold"
                   >
                     Done
                   </button>
@@ -1106,4 +1106,5 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
     </div>
   );
 }
+
 

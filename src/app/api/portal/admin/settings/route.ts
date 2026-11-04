@@ -6,8 +6,8 @@ import { z } from "zod";
 const settingsSchema = z.object({
   serviceStatus: z.enum(["online", "offline"]).optional(),
   pilotMode: z.enum(["true", "false"]).optional(),
-  operatingHours: z.string().max(100).optional(),
-  retentionDays: z.string().max(10).optional(),
+  operatingHours: z.string().trim().min(1).max(100).optional(),
+  retentionDays: z.string().regex(/^\d{1,3}$/).refine((value) => Number(value) >= 1 && Number(value) <= 365, "Retention policy must be between 1 and 365 days").optional(),
 });
 
 export async function GET(req: Request) {

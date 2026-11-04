@@ -6,7 +6,6 @@ import { z } from "zod";
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  mfaCode: z.string().optional(), // For admin/supervisor MFA check
 });
 
 export async function POST(req: Request) {

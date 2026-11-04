@@ -20,7 +20,9 @@ import {
   FileCheck,
   Lock,
   Shield,
+  Star,
 } from "lucide-react";
+import { ApplicationReview, IncidentReview, VolunteerStatusControls, saveAdminAction } from "@/components/AdminControls";
 import {
   Volunteer,
   SupportTicket,
@@ -29,6 +31,7 @@ import {
   IncidentReport,
   VolunteerApplication,
   AdminAuditEvent,
+  UserFeedback,
 } from "@/lib/types";
 
 function requestSignal(signal?: AbortSignal) {
@@ -65,6 +68,10 @@ export default function PortalDashboard() {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [applications, setApplications] = useState<VolunteerApplication[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditEvent[]>([]);
+  const [userFeedback, setUserFeedback] = useState<UserFeedback[]>([]);
+  const [adminError, setAdminError] = useState("");
+  const [adminNotice, setAdminNotice] = useState("");
+  const [pendingAction, setPendingAction] = useState("");
   const [platformSettings, setPlatformSettings] = useState({
     serviceStatus: "online",
     pilotMode: "true",
@@ -199,12 +206,13 @@ export default function PortalDashboard() {
         const data = await response.json() as T;
         if (!signal?.aborted) apply(data);
       }).catch((error: unknown) => {
-        if (!signal?.aborted) setChatError(error instanceof Error ? error.message : "Unable to load this section.");
+        if (!signal?.aborted) setAdminError(error instanceof Error ? error.message : "Unable to load this section.");
       });
     if (activeTab === "privacy") return load<{ requests: PrivacyRequest[] }>("/api/portal/admin/privacy-requests", (data) => setPrivacyRequests(data.requests));
     if (activeTab === "reports") return load<{ reports: IncidentReport[] }>("/api/portal/admin/incident-reports", (data) => setIncidentReports(data.reports));
     if (activeTab === "team") return load<{ volunteers: Volunteer[] }>("/api/portal/admin/volunteers", (data) => setVolunteers(data.volunteers));
     if (activeTab === "applications") return load<{ applications: VolunteerApplication[] }>("/api/portal/admin/applications", (data) => setApplications(data.applications));
+    if (activeTab === "feedback") return load<{ feedback: UserFeedback[] }>("/api/portal/admin/feedback", (data) => setUserFeedback(data.feedback));
     if (activeTab === "settings") return Promise.all([
       load<typeof platformSettings>("/api/portal/admin/settings", setPlatformSettings),
       load<{ auditEvents: AdminAuditEvent[] }>("/api/portal/admin/audit", (data) => setAuditLogs(data.auditEvents)),
@@ -219,22 +227,21 @@ export default function PortalDashboard() {
 
   // Update Supporter Availability
   const handleAvailabilityChange = async (newStatus: "online" | "busy" | "offline") => {
-    setMyAvailability(newStatus);
+    setChatError("");
     try {
-      await fetch("/api/portal/availability", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-    } catch (err) {
-      console.error("Availability update error", err);
+      await saveAdminAction("/api/portal/availability", { status: newStatus });
+      setMyAvailability(newStatus);
+    } catch (error: unknown) {
+      setChatError(error instanceof Error ? error.message : "Unable to update your availability.");
     }
   };
 
   // Logout
   const handleLogout = async () => {
-    await fetch("/api/portal/auth/logout", { method: "POST" });
-    router.push("/portal/login");
+    try {
+      await saveAdminAction("/api/portal/auth/logout", {});
+      router.push("/portal/login");
+    } catch (error: unknown) { setChatError(error instanceof Error ? error.message : "Unable to sign out. Please try again."); }
   };
 
   // Supporter Typing Ping
@@ -301,29 +308,18 @@ export default function PortalDashboard() {
     }
   };
 
-  // Assign Ticket to Self
-  const handleAssignToMe = async () => {
-    if (!activeTicket) return;
+  const handleTicketAction = async (action: string, body: unknown = {}) => {
+    if (!activeTicket || pendingAction) return;
+    setPendingAction(`ticket:${action}`); setChatError("");
     try {
-      await fetch(`/api/portal/tickets/${activeTicket.ticket_ref}/assign`, { method: "POST" });
-      pollActiveTicket();
-      fetchTickets();
-    } catch (err) {
-      console.error("Assign error", err);
-    }
+      await saveAdminAction(`/api/portal/tickets/${activeTicket.ticket_ref}/${action}`, body);
+      void pollActiveTicket(); void fetchTickets();
+    } catch (error: unknown) { setChatError(error instanceof Error ? error.message : "Unable to update this conversation."); }
+    finally { setPendingAction(""); }
   };
 
-  // Unassign Ticket (Return to Queue)
-  const handleReturnToQueue = async () => {
-    if (!activeTicket) return;
-    try {
-      await fetch(`/api/portal/tickets/${activeTicket.ticket_ref}/unassign`, { method: "POST" });
-      pollActiveTicket();
-      fetchTickets();
-    } catch (err) {
-      console.error("Unassign error", err);
-    }
-  };
+  const handleAssignToMe = () => handleTicketAction("assign");
+  const handleReturnToQueue = () => handleTicketAction("unassign");
 
   // Close Ticket
   const handleCloseTicket = async () => {
@@ -331,47 +327,22 @@ export default function PortalDashboard() {
     const confirm = window.confirm("Are you sure you want to close this conversation?");
     if (!confirm) return;
 
-    try {
-      await fetch(`/api/portal/tickets/${activeTicket.ticket_ref}/close`, { method: "POST" });
-      pollActiveTicket();
-      fetchTickets();
-    } catch (err) {
-      console.error("Close error", err);
-    }
+    await handleTicketAction("close");
   };
 
   // Flag Ticket
   const handleTogglePriority = async () => {
     if (!activeTicket) return;
     const newPriority = !activeTicket.is_priority_review;
-    try {
-      await fetch(`/api/portal/tickets/${activeTicket.ticket_ref}/flag`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPriority: newPriority }),
-      });
-      pollActiveTicket();
-      fetchTickets();
-    } catch (err) {
-      console.error("Priority toggle error", err);
-    }
+    await handleTicketAction("flag", { isPriority: newPriority });
   };
 
   const handleToggleSafety = async () => {
     if (!activeTicket) return;
     const newSafety = !activeTicket.is_safety_flagged;
-    const notes = prompt("Enter safety assessment or supervisor handover notes:") || undefined;
-    try {
-      await fetch(`/api/portal/tickets/${activeTicket.ticket_ref}/flag`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isSafetyFlagged: newSafety, notes }),
-      });
-      pollActiveTicket();
-      fetchTickets();
-    } catch (err) {
-      console.error("Safety flag error", err);
-    }
+    const notes = prompt("Enter safety assessment or supervisor handover notes:");
+    if (notes === null) return;
+    await handleTicketAction("flag", { isSafetyFlagged: newSafety, notes });
   };
 
   // Process Privacy Deletion
@@ -379,27 +350,29 @@ export default function PortalDashboard() {
     const confirm = window.confirm("Execute permanent cryptographic shredding of all messages and recovery credentials for this conversation?");
     if (!confirm) return;
 
+    if (pendingAction) return;
+    setPendingAction(`delete:${ticketId}`); setAdminError(""); setAdminNotice("");
     try {
-      const res = await fetch(`/api/portal/admin/privacy-requests/${ticketId}/process`, { method: "POST" });
-      if (res.ok) {
-        alert("Conversation messages and credentials permanently shredded.");
-        fetchTabData();
-        fetchTickets();
-      }
+      await saveAdminAction(`/api/portal/admin/privacy-requests/${ticketId}/process`, {});
+      setAdminNotice("Conversation messages and access credentials were permanently deleted.");
+      void fetchTabData(); void fetchTickets();
     } catch (err) {
-      console.error("Shredding error", err);
-    }
+      setAdminError(err instanceof Error ? err.message : "Unable to process this deletion request.");
+    } finally { setPendingAction(""); }
   };
 
   // Create Volunteer Account
   const handleCreateVolunteer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pendingAction) return;
+    setPendingAction("create-volunteer");
     setNewVolMsg("");
     try {
       const res = await fetch("/api/portal/admin/volunteers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newVolData),
+        signal: AbortSignal.timeout(15000),
       });
       if (res.ok) {
         setNewVolMsg("Volunteer account created successfully.");
@@ -411,7 +384,19 @@ export default function PortalDashboard() {
       }
     } catch (err: unknown) {
       setNewVolMsg(err instanceof Error ? err.message : "Error creating account.");
-    }
+    } finally { setPendingAction(""); }
+  };
+
+  const handleSaveSettings = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (pendingAction) return;
+    setPendingAction("settings"); setAdminError(""); setAdminNotice("");
+    try {
+      await saveAdminAction("/api/portal/admin/settings", platformSettings);
+      setAdminNotice("Platform settings saved.");
+      void fetchTabData();
+    } catch (error: unknown) { setAdminError(error instanceof Error ? error.message : "Unable to save settings."); }
+    finally { setPendingAction(""); }
   };
 
   // Filtered Tickets
@@ -444,7 +429,7 @@ export default function PortalDashboard() {
   const isSupervisorOrAdmin = currentUser.role === "admin" || currentUser.role === "supervisor";
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FAF9F7]">
+    <div className="flex-1 flex flex-col bg-[#FAF9F7] text-base leading-relaxed">
       {/* PORTAL TOP NAVIGATION BAR */}
       <header className="bg-[#25234A] text-white border-b border-[#383466] px-4 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -456,18 +441,18 @@ export default function PortalDashboard() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-base">{currentUser.display_name}</span>
-                <span className="text-[11px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[#534D88] text-[#B8D8C2]">
+                <span className="text-sm uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[#534D88] text-[#B8D8C2]">
                   {currentUser.role}
                 </span>
               </div>
-              <p className="text-xs text-[#FAF9F7]/70">Supporter ID: {currentUser.id}</p>
+              <p className="text-sm text-[#FAF9F7]/70">Supporter ID: {currentUser.id}</p>
             </div>
           </div>
 
           {/* Availability Control & Actions */}
           <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {/* Availability Pill Selector */}
-            <div className="flex items-center p-1 rounded-xl bg-[#1A1838] border border-[#383466] text-xs">
+            <div className="flex items-center p-1 rounded-xl bg-[#1A1838] border border-[#383466] text-sm">
               <button
                 type="button"
                 onClick={() => handleAvailabilityChange("online")}
@@ -500,7 +485,7 @@ export default function PortalDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="p-2 rounded-xl bg-[#383466] hover:bg-rose-900/60 text-white text-xs font-semibold border border-[#534D88] flex items-center gap-1.5"
+              className="p-2 rounded-xl bg-[#383466] hover:bg-rose-900/60 text-white text-sm font-semibold border border-[#534D88] flex items-center gap-1.5"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -516,7 +501,7 @@ export default function PortalDashboard() {
           <button
             type="button"
             onClick={() => setActiveTab("queue")}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "queue"
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "queue"
                 ? "bg-[#25234A] text-white shadow-xs"
                 : "text-[#5B5875] hover:bg-[#FAF9F7]"
               }`}
@@ -528,7 +513,7 @@ export default function PortalDashboard() {
           <button
             type="button"
             onClick={() => setActiveTab("guidelines")}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "guidelines"
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "guidelines"
                 ? "bg-[#25234A] text-white shadow-xs"
                 : "text-[#5B5875] hover:bg-[#FAF9F7]"
               }`}
@@ -542,7 +527,7 @@ export default function PortalDashboard() {
               <button
                 type="button"
                 onClick={() => setActiveTab("reports")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "reports"
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "reports"
                     ? "bg-[#25234A] text-white shadow-xs"
                     : "text-[#5B5875] hover:bg-[#FAF9F7]"
                   }`}
@@ -554,7 +539,7 @@ export default function PortalDashboard() {
               <button
                 type="button"
                 onClick={() => setActiveTab("privacy")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "privacy"
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "privacy"
                     ? "bg-[#25234A] text-white shadow-xs"
                     : "text-[#5B5875] hover:bg-[#FAF9F7]"
                   }`}
@@ -565,8 +550,14 @@ export default function PortalDashboard() {
 
               <button
                 type="button"
+                onClick={() => setActiveTab("feedback")}
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "feedback" ? "bg-[#25234A] text-white" : "text-[#5B5875] hover:bg-[#FAF9F7]"}`}
+              ><Star className="w-4 h-4" /><span>Feedback</span></button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab("applications")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "applications"
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "applications"
                     ? "bg-[#25234A] text-white shadow-xs"
                     : "text-[#5B5875] hover:bg-[#FAF9F7]"
                   }`}
@@ -582,7 +573,7 @@ export default function PortalDashboard() {
               <button
                 type="button"
                 onClick={() => setActiveTab("team")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "team"
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "team"
                     ? "bg-[#25234A] text-white shadow-xs"
                     : "text-[#5B5875] hover:bg-[#FAF9F7]"
                   }`}
@@ -594,7 +585,7 @@ export default function PortalDashboard() {
               <button
                 type="button"
                 onClick={() => setActiveTab("settings")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "settings"
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "settings"
                     ? "bg-[#25234A] text-white shadow-xs"
                     : "text-[#5B5875] hover:bg-[#FAF9F7]"
                   }`}
@@ -609,6 +600,9 @@ export default function PortalDashboard() {
 
       {/* DASHBOARD CONTENT BODY */}
       <main className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1 flex flex-col">
+        {chatError && <p role="alert" className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{chatError}</p>}
+        {adminError && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><span>{adminError}</span><button type="button" onClick={() => { setAdminError(""); void fetchTabData(); }} className="font-semibold underline">Retry loading</button></div>}
+        {adminNotice && <p role="status" className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{adminNotice}</p>}
         {/* ============================================================== */}
         {/* TAB 1: CONVERSATIONS QUEUE & CHAT CONSOLE                      */}
         {/* ============================================================== */}
@@ -617,7 +611,7 @@ export default function PortalDashboard() {
             {/* Left Column: Tickets Queue List (lg:col-span-4) */}
             <div className="lg:col-span-4 space-y-4">
               {/* Filter Pills */}
-              <div className="p-1.5 rounded-2xl bg-white border border-[#E8E5DF] flex items-center justify-between text-xs font-semibold">
+              <div className="p-1.5 rounded-2xl bg-white border border-[#E8E5DF] flex items-center justify-between text-sm font-semibold">
                 <button
                   type="button"
                   onClick={() => setTicketFilter("all")}
@@ -651,7 +645,7 @@ export default function PortalDashboard() {
               {/* Tickets List */}
               <div className="space-y-3 max-h-[700px] overflow-y-auto">
                 {filteredTickets.length === 0 ? (
-                  <div className="p-8 rounded-3xl bg-white border border-[#E8E5DF] text-center text-xs text-[#5B5875]">
+                  <div className="p-8 rounded-3xl bg-white border border-[#E8E5DF] text-center text-sm text-[#5B5875]">
                     No conversations in this view right now.
                   </div>
                 ) : (
@@ -682,11 +676,11 @@ export default function PortalDashboard() {
                           }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-mono font-bold text-[#25234A]">
+                          <span className="text-sm font-mono font-bold text-[#25234A]">
                             {t.ticket_ref}
                           </span>
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${t.status === "waiting"
+                            className={`text-sm font-bold px-2 py-0.5 rounded-full ${t.status === "waiting"
                                 ? "bg-amber-100 text-amber-900"
                                 : t.status === "active"
                                   ? "bg-emerald-100 text-emerald-900"
@@ -699,11 +693,11 @@ export default function PortalDashboard() {
                           </span>
                         </div>
 
-                        <div className="text-xs font-semibold text-[#25234A] truncate">
+                        <div className="text-sm font-semibold text-[#25234A] truncate">
                           {t.topic || "Open Conversation"}
                         </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-[#5B5875] mt-2">
+                        <div className="flex items-center justify-between text-sm text-[#5B5875] mt-2">
                           <span className="capitalize">Lang: {t.preferred_language === "si" ? "Sinhala" : "English"}</span>
                           <span>
                             {t.assigned_volunteer_name ? `With: ${t.assigned_volunteer_name}` : "Unassigned"}
@@ -713,12 +707,12 @@ export default function PortalDashboard() {
                         {Boolean(t.is_priority_review || t.is_safety_flagged) && (
                           <div className="mt-2 flex items-center gap-1.5">
                             {Boolean(t.is_priority_review) && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800">
+                              <span className="text-sm font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800">
                                 Priority Review
                               </span>
                             )}
                             {Boolean(t.is_safety_flagged) && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-800">
+                              <span className="text-sm font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-800">
                                 Safety Flagged
                               </span>
                             )}
@@ -733,7 +727,6 @@ export default function PortalDashboard() {
 
             {/* Right Column: Active Chat Console (lg:col-span-8) */}
             <div className="lg:col-span-8 flex flex-col bg-white rounded-3xl border border-[#E8E5DF] shadow-md overflow-hidden min-h-[640px]">
-              {chatError && <p role="alert" className="m-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{chatError}</p>}
               {selectedTicketRef && activeTicket ? (
                 <>
                   {/* Console Header */}
@@ -743,24 +736,25 @@ export default function PortalDashboard() {
                         <span className="text-base font-bold text-[#25234A] font-mono">
                           {activeTicket.ticket_ref}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-md bg-[#EDE7F6] text-[#25234A] font-medium">
+                        <span className="text-sm px-2 py-0.5 rounded-md bg-[#EDE7F6] text-[#25234A] font-medium">
                           {activeTicket.preferred_language === "si" ? "සිංහල" : "English"}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-md bg-white border border-[#E8E5DF] text-[#5B5875]">
+                        <span className="text-sm px-2 py-0.5 rounded-md bg-white border border-[#E8E5DF] text-[#5B5875]">
                           {activeTicket.topic || "General"}
                         </span>
                       </div>
-                      <p className="text-xs text-[#5B5875] mt-0.5">
+                      <p className="text-sm text-[#5B5875] mt-0.5">
                         Assigned to: {activeTicket.assigned_volunteer_name || "Queue"}
                       </p>
                     </div>
 
                     {/* Console Actions */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                       {activeTicket.assigned_volunteer_id !== currentUser.id ? (
                         <button
                           type="button"
                           onClick={handleAssignToMe}
+                          disabled={Boolean(pendingAction) || activeTicket.status === "closed"}
                           className="px-3 py-1.5 rounded-xl font-bold bg-[#25234A] text-white hover:bg-[#383466]"
                         >
                           Assign to Me
@@ -769,6 +763,7 @@ export default function PortalDashboard() {
                         <button
                           type="button"
                           onClick={handleReturnToQueue}
+                          disabled={Boolean(pendingAction) || activeTicket.status === "closed"}
                           className="px-3 py-1.5 rounded-xl font-medium bg-[#EDE7F6] text-[#25234A] hover:bg-[#D4C7E8]"
                         >
                           Return to Queue
@@ -778,6 +773,7 @@ export default function PortalDashboard() {
                       <button
                         type="button"
                         onClick={handleTogglePriority}
+                        disabled={Boolean(pendingAction)}
                         className={`p-2 rounded-xl border ${activeTicket.is_priority_review ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white text-[#5B5875]"
                           }`}
                         title="Flag for Priority / Supervisor Review"
@@ -788,6 +784,7 @@ export default function PortalDashboard() {
                       <button
                         type="button"
                         onClick={handleToggleSafety}
+                        disabled={Boolean(pendingAction)}
                         className={`p-2 rounded-xl border ${activeTicket.is_safety_flagged ? "bg-red-100 border-red-300 text-red-900" : "bg-white text-[#5B5875]"
                           }`}
                         title="Report Safety / Harm Concern"
@@ -807,6 +804,7 @@ export default function PortalDashboard() {
                         <button
                           type="button"
                           onClick={handleCloseTicket}
+                          disabled={Boolean(pendingAction) || (currentUser.role === "supporter" && activeTicket.assigned_volunteer_id !== currentUser.id)}
                           className="px-3 py-1.5 rounded-xl font-medium bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200"
                         >
                           Close Chat
@@ -817,7 +815,7 @@ export default function PortalDashboard() {
 
                   {/* Optional Empathetic Prompts Drawer */}
                   {showGuidanceDrawer && (
-                    <div className="p-4 bg-[#EDE7F6]/60 border-b border-[#D4C7E8] text-xs space-y-2">
+                    <div className="p-4 bg-[#EDE7F6]/60 border-b border-[#D4C7E8] text-sm space-y-2">
                       <div className="flex items-center justify-between font-bold text-[#25234A]">
                         <span>Compassionate Response Prompts (Click to insert):</span>
                         <button type="button" onClick={() => setShowGuidanceDrawer(false)} className="text-[#5B5875]">✕</button>
@@ -867,7 +865,7 @@ export default function PortalDashboard() {
                       if (isSystem) {
                         return (
                           <div key={msg.id} className="flex justify-center my-2">
-                            <div className="max-w-md px-3.5 py-1.5 rounded-full bg-[#EDE7F6]/80 text-[11px] text-[#5B5875] text-center border border-[#D4C7E8]">
+                            <div className="max-w-md px-3.5 py-1.5 rounded-full bg-[#EDE7F6]/80 text-sm text-[#5B5875] text-center border border-[#D4C7E8]">
                               {msg.content}
                             </div>
                           </div>
@@ -879,7 +877,7 @@ export default function PortalDashboard() {
                           key={msg.id}
                           className={`flex flex-col ${isVisitor ? "items-start" : "items-end"}`}
                         >
-                          <div className="flex items-center gap-2 mb-1 text-[11px] text-[#5B5875] px-1">
+                          <div className="flex items-center gap-2 mb-1 text-sm text-[#5B5875] px-1">
                             <span className="font-semibold text-[#25234A]">
                               {isVisitor ? "Visitor (Anonymous)" : msg.sender_name}
                             </span>
@@ -901,7 +899,7 @@ export default function PortalDashboard() {
 
                     {/* Real-time Visitor Typing Indicator */}
                     {visitorTyping.isTyping && (
-                      <div className="flex items-center gap-2 text-xs text-[#5B5875] italic py-1 px-2 animate-pulse">
+                      <div className="flex items-center gap-2 text-sm text-[#5B5875] italic py-1 px-2 animate-pulse">
                         <span className="w-2 h-2 rounded-full bg-emerald-600" />
                         <span>Visitor is typing a response...</span>
                       </div>
@@ -938,13 +936,13 @@ export default function PortalDashboard() {
                             <Send className="w-5 h-5" />
                           </button>
                         </div>
-                        <div className="flex items-center justify-between text-[11px] text-[#5B5875] px-1">
+                        <div className="flex items-center justify-between text-sm text-[#5B5875] px-1">
                           <span>Encrypted at rest (AES-256-GCM)</span>
                           <span>Replying as: {currentUser.display_name}</span>
                         </div>
                       </form>
                     ) : (
-                      <div className="text-center py-2 text-xs text-slate-600">
+                      <div className="text-center py-2 text-sm text-slate-600">
                         This conversation has been closed.
                       </div>
                     )}
@@ -956,7 +954,7 @@ export default function PortalDashboard() {
                     <MessageSquare className="w-7 h-7" />
                   </div>
                   <h3 className="text-lg font-bold text-[#25234A]">Select a Conversation to View</h3>
-                  <p className="text-xs max-w-sm leading-relaxed">
+                  <p className="text-sm max-w-sm leading-relaxed">
                     Choose any waiting or assigned ticket from the queue on the left to begin listening and communicating with the visitor.
                   </p>
                 </div>
@@ -971,7 +969,7 @@ export default function PortalDashboard() {
         {activeTab === "guidelines" && (
           <div className="max-w-4xl mx-auto w-full space-y-8 animate-fadeIn">
             <div className="text-center space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3.5 py-1 rounded-full">
+              <span className="text-sm font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3.5 py-1 rounded-full">
                 Core Supporter Manual
               </span>
               <h2 className="text-3xl font-bold text-[#25234A]">Volunteer Principles & Safeguarding Standards</h2>
@@ -987,7 +985,7 @@ export default function PortalDashboard() {
                   <Heart className="w-5 h-5 text-rose-600" />
                   <span>1. Empathetic Listening & Nonjudgmental Presence</span>
                 </div>
-                <p className="text-xs sm:text-sm text-[#5B5875] leading-relaxed">
+                <p className="text-sm text-[#5B5875] leading-relaxed">
                   Your primary responsibility is to listen—not to diagnose, advise, preach, or &ldquo;fix&rdquo;. Reflect the feelings you hear. Validate that their pain is understandable given their circumstances. Never invalidate someone by comparing their suffering to others (&ldquo;others have it worse&rdquo;).
                 </p>
               </div>
@@ -998,7 +996,7 @@ export default function PortalDashboard() {
                   <Shield className="w-5 h-5 text-[#383466]" />
                   <span>2. Respectful Boundaries & Supporter Anonymity</span>
                 </div>
-                <p className="text-xs sm:text-sm text-[#5B5875] leading-relaxed">
+                <p className="text-sm text-[#5B5875] leading-relaxed">
                   Never share your personal phone numbers, home address, personal social media profiles, or financial details with visitors. Keep interactions strictly within this platform. If a visitor requests romantic connection, personal contact, or meetings, gently reiterate platform guidelines.
                 </p>
               </div>
@@ -1009,7 +1007,7 @@ export default function PortalDashboard() {
                   <PhoneCall className="w-5 h-5 text-emerald-600" />
                   <span>3. Responding to Acute Crisis & Self-Harm Escalations</span>
                 </div>
-                <p className="text-xs sm:text-sm text-[#5B5875] leading-relaxed">
+                <p className="text-sm text-[#5B5875] leading-relaxed">
                   If a visitor indicates immediate suicidal intent or active self-harm:
                   <br />
                   1. Stay calm and convey that their life and feelings matter to you.
@@ -1026,7 +1024,7 @@ export default function PortalDashboard() {
                   <Lock className="w-5 h-5 text-[#25234A]" />
                   <span>4. Confidentiality & Sri Lankan PDPA Compliance</span>
                 </div>
-                <p className="text-xs sm:text-sm text-[#5B5875] leading-relaxed">
+                <p className="text-sm text-[#5B5875] leading-relaxed">
                   Everything shared by visitors is strictly confidential. You are legally and ethically prohibited from copying, taking screenshots, or discussing conversation details outside supervisory debriefs.
                 </p>
               </div>
@@ -1042,51 +1040,23 @@ export default function PortalDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-[#25234A]">Safety & Misconduct Reports</h2>
-                <p className="text-xs text-[#5B5875]">User reports received via the public Safety & Privacy page.</p>
+                <p className="text-sm text-[#5B5875]">User reports received via the public Safety & Privacy page.</p>
               </div>
               <button
                 type="button"
                 onClick={() => { void fetchTabData(); }}
-                className="px-3.5 py-1.5 rounded-xl border border-[#E8E5DF] bg-white text-xs font-semibold text-[#25234A] flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-xl border border-[#E8E5DF] bg-white text-sm font-semibold text-[#25234A] flex items-center gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Refresh</span>
               </button>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs overflow-x-auto">
+            <div className="space-y-4">
               {incidentReports.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[#5B5875]">No incident reports on file.</div>
+                <div className="py-8 text-center text-sm text-[#5B5875]">No incident reports on file.</div>
               ) : (
-                <table className="w-full text-left text-xs text-[#25234A]">
-                  <thead>
-                    <tr className="border-b border-[#E8E5DF] text-[#5B5875] uppercase tracking-wider text-[11px]">
-                      <th className="py-3 px-2">Type</th>
-                      <th className="py-3 px-2">Ticket Ref</th>
-                      <th className="py-3 px-2">Description</th>
-                      <th className="py-3 px-2">Email</th>
-                      <th className="py-3 px-2">Status</th>
-                      <th className="py-3 px-2">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E8E5DF]/60">
-                    {incidentReports.map((r) => (
-                      <tr key={r.id} className="hover:bg-[#FAF9F7]">
-                        <td className="py-3 px-2 font-bold capitalize">{r.report_type.replace("_", " ")}</td>
-                        <td className="py-3 px-2 font-mono font-bold">{r.ticket_ref || "N/A"}</td>
-                        <td className="py-3 px-2 max-w-xs truncate">{r.description}</td>
-                        <td className="py-3 px-2">{r.contact_email || "Anonymous"}</td>
-                        <td className="py-3 px-2">
-                          <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] ${r.status === "open" ? "bg-red-100 text-red-900" : r.status === "under_review" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"
-                            }`}>
-                            {r.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-[#5B5875]">{new Date(r.created_at).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                incidentReports.map((report) => <IncidentReview key={report.id} report={report} onSaved={() => { void fetchTabData(); }} />)
               )}
             </div>
           </div>
@@ -1100,13 +1070,13 @@ export default function PortalDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-[#25234A]">Privacy & Data Deletion Requests</h2>
-                <p className="text-xs text-[#5B5875]">User requests for immediate cryptographic shredding under PDPA standards.</p>
+                <p className="text-sm text-[#5B5875]">User requests for immediate cryptographic shredding under PDPA standards.</p>
               </div>
             </div>
 
             <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs">
               {privacyRequests.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[#5B5875]">No pending deletion requests.</div>
+                <div className="py-8 text-center text-sm text-[#5B5875]">No pending deletion requests.</div>
               ) : (
                 <div className="space-y-4">
                   {privacyRequests.map((req) => (
@@ -1117,12 +1087,12 @@ export default function PortalDashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-sm text-[#25234A]">{req.ticket_ref}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${req.status === "pending" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"
+                          <span className={`text-sm font-bold px-2 py-0.5 rounded-full uppercase ${req.status === "pending" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"
                             }`}>
                             {req.status}
                           </span>
                         </div>
-                        <p className="text-xs text-[#5B5875] mt-1">
+                        <p className="text-sm text-[#5B5875] mt-1">
                           Requested: {new Date(req.created_at).toLocaleString()} • Type: {req.request_type}
                         </p>
                       </div>
@@ -1131,10 +1101,11 @@ export default function PortalDashboard() {
                         <button
                           type="button"
                           onClick={() => handleProcessDeletion(req.ticket_id)}
-                          className="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold flex items-center gap-1.5"
+                          disabled={Boolean(pendingAction)}
+                          className="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-bold flex items-center gap-1.5"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span>Execute Shredding</span>
+                          <span>{pendingAction === `delete:${req.ticket_id}` ? "Deleting…" : "Permanently delete"}</span>
                         </button>
                       )}
                     </div>
@@ -1152,12 +1123,12 @@ export default function PortalDashboard() {
           <div className="space-y-6 animate-fadeIn">
             <div>
               <h2 className="text-2xl font-bold text-[#25234A]">Volunteer Expressions of Interest</h2>
-              <p className="text-xs text-[#5B5875]">Applications submitted via the public Our Story page.</p>
+              <p className="text-sm text-[#5B5875]">Applications submitted via the public Our Story page.</p>
             </div>
 
             <div className="space-y-4">
               {applications.length === 0 ? (
-                <div className="p-8 rounded-3xl bg-white border border-[#E8E5DF] text-center text-xs text-[#5B5875]">
+                <div className="p-8 rounded-3xl bg-white border border-[#E8E5DF] text-center text-sm text-[#5B5875]">
                   No volunteer expressions of interest received yet.
                 </div>
               ) : (
@@ -1166,14 +1137,14 @@ export default function PortalDashboard() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <h3 className="text-base font-bold text-[#25234A]">{app.full_name}</h3>
-                        <p className="text-xs text-[#5B5875]">{app.email} • Phone: {app.phone || "Not provided"}</p>
+                        <p className="text-sm text-[#5B5875]">{app.email} • Phone: {app.phone || "Not provided"}</p>
                       </div>
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#EDE7F6] text-[#25234A] uppercase">
+                      <span className="text-sm font-bold px-3 py-1 rounded-full bg-[#EDE7F6] text-[#25234A] uppercase">
                         Status: {app.status}
                       </span>
                     </div>
 
-                    <div className="text-xs text-[#25234A] bg-[#FAF9F7] p-3 rounded-xl space-y-2 border border-[#E8E5DF]/60">
+                    <div className="text-sm text-[#25234A] bg-[#FAF9F7] p-3 rounded-xl space-y-2 border border-[#E8E5DF]/60">
                       <div>
                         <strong>Languages:</strong> {app.languages}
                       </div>
@@ -1184,11 +1155,39 @@ export default function PortalDashboard() {
                         <strong>Background:</strong> {app.background}
                       </div>
                     </div>
+                    <ApplicationReview application={app} onSaved={() => { void fetchTabData(); }} />
                   </div>
                 ))
               )}
             </div>
           </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB: VISITOR FEEDBACK                                         */}
+        {/* ============================================================== */}
+        {activeTab === "feedback" && isSupervisorOrAdmin && (
+          <section className="space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div><h2 className="text-2xl font-bold">Visitor Feedback</h2><p className="mt-1 text-sm text-[#5B5875]">General feedback and voluntary conversation ratings.</p></div>
+              <button type="button" onClick={() => { void fetchTabData(); void fetchTickets(); }} className="rounded-xl border border-[#E8E5DF] bg-white px-4 py-2.5 text-sm font-semibold">Refresh feedback</button>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <section className="space-y-3"><h3 className="text-lg font-bold">Messages from visitors</h3>
+                {userFeedback.length === 0 ? <p className="rounded-2xl border border-[#E8E5DF] bg-white p-6 text-sm text-[#5B5875]">No general feedback received yet.</p> : userFeedback.map((feedback) => <article key={feedback.id} className="rounded-2xl border border-[#E8E5DF] bg-white p-5">
+                  <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-semibold capitalize">{feedback.feedback_type.replaceAll("_", " ")}</span><span className="text-[#5B5875]">{new Date(feedback.created_at).toLocaleString()}</span></div>
+                  {feedback.rating != null && <p className="mt-2 text-sm font-semibold">Rating: {feedback.rating}/5</p>}
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">{feedback.message}</p>
+                </article>)}
+              </section>
+              <section className="space-y-3"><h3 className="text-lg font-bold">Conversation feedback</h3>
+                {tickets.filter((ticket) => ticket.feedback_rating != null || ticket.feedback_text).length === 0 ? <p className="rounded-2xl border border-[#E8E5DF] bg-white p-6 text-sm text-[#5B5875]">No conversation feedback received yet.</p> : tickets.filter((ticket) => ticket.feedback_rating != null || ticket.feedback_text).map((ticket) => <article key={ticket.id} className="rounded-2xl border border-[#E8E5DF] bg-white p-5">
+                  <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-mono font-bold">{ticket.ticket_ref}</span>{ticket.feedback_rating != null && <span className="font-semibold">Felt heard: {ticket.feedback_rating}/5</span>}</div>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">{ticket.feedback_text || "A rating was shared without a written comment."}</p>
+                </article>)}
+              </section>
+            </div>
+          </section>
         )}
 
         {/* ============================================================== */}
@@ -1198,7 +1197,7 @@ export default function PortalDashboard() {
           <div className="space-y-8 animate-fadeIn">
             <div>
               <h2 className="text-2xl font-bold text-[#25234A]">Volunteer Supporter Accounts</h2>
-              <p className="text-xs text-[#5B5875]">Manage active supporters, supervisors, and administrative credentials.</p>
+              <p className="text-sm text-[#5B5875]">Manage active supporters, supervisors, and administrative credentials.</p>
             </div>
 
             {/* Create New Volunteer Account */}
@@ -1209,7 +1208,7 @@ export default function PortalDashboard() {
               </h3>
 
               {newVolMsg && (
-                <div className="p-3 rounded-xl bg-blue-50 text-blue-900 text-xs">
+                <div className="p-3 rounded-xl bg-blue-50 text-blue-900 text-sm">
                   {newVolMsg}
                 </div>
               )}
@@ -1217,24 +1216,27 @@ export default function PortalDashboard() {
               <form onSubmit={handleCreateVolunteer} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <input
                   type="email"
+                  aria-label="New volunteer email"
                   required
                   value={newVolData.email}
                   onChange={(e) => setNewVolData({ ...newVolData, email: e.target.value })}
                   placeholder="supporter@hithataidak.lk"
-                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-xs sm:text-sm"
+                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-sm"
                 />
                 <input
                   type="text"
+                  aria-label="New volunteer display name"
                   required
                   value={newVolData.displayName}
                   onChange={(e) => setNewVolData({ ...newVolData, displayName: e.target.value })}
                   placeholder="Display Name (e.g. Supporter Kasun)"
-                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-xs sm:text-sm"
+                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-sm"
                 />
                 <select
+                  aria-label="New volunteer role"
                   value={newVolData.role}
                   onChange={(e) => setNewVolData({ ...newVolData, role: e.target.value })}
-                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-xs sm:text-sm bg-white"
+                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-sm bg-white"
                 >
                   <option value="supporter">Supporter (Volunteer)</option>
                   <option value="supervisor">Supervisor</option>
@@ -1242,18 +1244,21 @@ export default function PortalDashboard() {
                 </select>
                 <input
                   type="password"
+                  aria-label="New volunteer password"
+                  minLength={8}
                   required
                   value={newVolData.password}
                   onChange={(e) => setNewVolData({ ...newVolData, password: e.target.value })}
                   placeholder="Password (min 8 chars)"
-                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-xs sm:text-sm"
+                  className="px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] text-sm"
                 />
                 <div className="sm:col-span-4 text-right">
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-[#25234A] text-white text-xs font-bold hover:bg-[#383466]"
+                    disabled={Boolean(pendingAction)}
+                    className="px-6 py-2.5 rounded-xl bg-[#25234A] text-white text-sm font-bold hover:bg-[#383466]"
                   >
-                    Add Supporter to Roster
+                    {pendingAction === "create-volunteer" ? "Creating…" : "Add Supporter to Roster"}
                   </button>
                 </div>
               </form>
@@ -1261,14 +1266,15 @@ export default function PortalDashboard() {
 
             {/* Team Roster Table */}
             <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs overflow-x-auto">
-              <table className="w-full text-left text-xs text-[#25234A]">
+              <table className="w-full text-left text-sm text-[#25234A]">
                 <thead>
-                  <tr className="border-b border-[#E8E5DF] text-[#5B5875] uppercase text-[11px]">
+                  <tr className="border-b border-[#E8E5DF] text-[#5B5875] uppercase text-sm">
                     <th className="py-3 px-2">Display Name</th>
                     <th className="py-3 px-2">Email</th>
                     <th className="py-3 px-2">Role</th>
                     <th className="py-3 px-2">Status</th>
                     <th className="py-3 px-2">Joined</th>
+                    <th className="py-3 px-2">Manage access</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8E5DF]/60">
@@ -1278,11 +1284,12 @@ export default function PortalDashboard() {
                       <td className="py-3 px-2">{v.email}</td>
                       <td className="py-3 px-2 capitalize font-semibold">{v.role}</td>
                       <td className="py-3 px-2">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Active & Approved
+                        <span className={`px-2 py-0.5 rounded-full text-sm font-bold ${v.is_active && v.is_approved ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                          {!v.is_active ? "Suspended" : !v.is_approved ? "Approval pending" : "Active & approved"}
                         </span>
                       </td>
                       <td className="py-3 px-2 text-[#5B5875]">{new Date(v.created_at).toLocaleDateString()}</td>
+                      <td className="py-3 px-2"><VolunteerStatusControls volunteer={v} currentUserId={currentUser.id} onSaved={() => { void fetchTabData(); }} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1298,63 +1305,64 @@ export default function PortalDashboard() {
           <div className="space-y-8 animate-fadeIn">
             <div>
               <h2 className="text-2xl font-bold text-[#25234A]">Platform Settings & Audit Logs</h2>
-              <p className="text-xs text-[#5B5875]">Configure operating modes and inspect privacy-preserving administrative actions.</p>
+              <p className="text-sm text-[#5B5875]">Configure operating modes and inspect privacy-preserving administrative actions.</p>
             </div>
 
             {/* Settings Card */}
-            <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs space-y-4">
-              <h3 className="text-base font-bold text-[#25234A]">Operational Configurations</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <form onSubmit={handleSaveSettings} className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs space-y-4">
+              <h3 className="text-lg font-bold text-[#25234A]">Operational Configurations</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <label className="block font-bold text-[#25234A] mb-1">Service Status Override</label>
+                  <label htmlFor="service-status" className="block font-bold text-[#25234A] mb-1">Service Status Override</label>
                   <select
+                    id="service-status"
                     value={platformSettings.serviceStatus}
-                    onChange={async (e) => {
-                      const val = e.target.value;
-                      setPlatformSettings({ ...platformSettings, serviceStatus: val });
-                      await fetch("/api/portal/admin/settings", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ serviceStatus: val }),
-                      });
-                    }}
+                    onChange={(e) => setPlatformSettings({ ...platformSettings, serviceStatus: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-[#E8E5DF] bg-[#FAF9F7]"
                   >
                     <option value="online">Online (Dynamic Supporter Presence)</option>
-                    <option value="offline">Offline (Emergency Banner Only)</option>
+                    <option value="offline">Offline (visitors can still leave a message)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-[#25234A] mb-1">Operating Hours Notice</label>
+                  <label htmlFor="operating-hours" className="block font-bold text-[#25234A] mb-1">Operating Hours Notice</label>
                   <input
+                    id="operating-hours"
                     type="text"
+                    required
+                    maxLength={100}
                     value={platformSettings.operatingHours}
                     onChange={(e) => setPlatformSettings({ ...platformSettings, operatingHours: e.target.value })}
-                    onBlur={async () => {
-                      await fetch("/api/portal/admin/settings", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ operatingHours: platformSettings.operatingHours }),
-                      });
-                    }}
                     className="w-full p-2.5 rounded-xl border border-[#E8E5DF] bg-[#FAF9F7]"
                   />
                 </div>
+                <div>
+                  <label htmlFor="pilot-mode" className="mb-1 block font-bold">Pilot notice</label>
+                  <select id="pilot-mode" value={platformSettings.pilotMode} onChange={(event) => setPlatformSettings({ ...platformSettings, pilotMode: event.target.value })} className="w-full rounded-xl border border-[#E8E5DF] bg-[#FAF9F7] p-2.5">
+                    <option value="true">Show pilot phase notice</option><option value="false">Hide pilot phase notice</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="retention-days" className="mb-1 block font-bold">Retention policy (days)</label>
+                  <input id="retention-days" type="number" min={1} max={365} required value={platformSettings.retentionDays} onChange={(event) => setPlatformSettings({ ...platformSettings, retentionDays: event.target.value })} className="w-full rounded-xl border border-[#E8E5DF] bg-[#FAF9F7] p-2.5" />
+                  <p className="mt-2 text-sm text-[#5B5875]">Saves the policy for the team. Scheduled automatic deletion is not configured; use Privacy / Deletion Requests to process requests.</p>
+                </div>
               </div>
-            </div>
+              <button type="submit" disabled={Boolean(pendingAction)} className="rounded-xl bg-[#25234A] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{pendingAction === "settings" ? "Saving…" : "Save settings"}</button>
+            </form>
 
             {/* Audit Logs Table */}
             <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold text-[#25234A]">Administrative Audit Trail</h3>
-                <span className="text-[11px] text-[#5B5875]">Zero private conversation content is ever recorded in audit trails</span>
+                <span className="text-sm text-[#5B5875]">Zero private conversation content is ever recorded in audit trails</span>
               </div>
 
               <div className="overflow-x-auto max-h-80">
-                <table className="w-full text-left text-xs text-[#25234A]">
+                <table className="w-full text-left text-sm text-[#25234A]">
                   <thead>
-                    <tr className="border-b border-[#E8E5DF] text-[#5B5875] text-[11px] uppercase">
+                    <tr className="border-b border-[#E8E5DF] text-[#5B5875] text-sm uppercase">
                       <th className="py-2.5 px-2">Action</th>
                       <th className="py-2.5 px-2">Target Type</th>
                       <th className="py-2.5 px-2">Target ID</th>
@@ -1367,7 +1375,7 @@ export default function PortalDashboard() {
                       <tr key={log.id} className="hover:bg-[#FAF9F7]">
                         <td className="py-2 px-2 font-mono font-bold text-[#25234A]">{log.action}</td>
                         <td className="py-2 px-2 capitalize">{log.target_type}</td>
-                        <td className="py-2 px-2 font-mono text-[11px]">{log.target_id}</td>
+                        <td className="py-2 px-2 font-mono text-sm">{log.target_id}</td>
                         <td className="py-2 px-2 text-[#5B5875] max-w-xs truncate">{log.details_safe}</td>
                         <td className="py-2 px-2 text-[#5B5875] whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</td>
                       </tr>

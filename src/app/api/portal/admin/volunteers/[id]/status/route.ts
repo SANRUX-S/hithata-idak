@@ -22,7 +22,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invalid status parameters" }, { status: 400 });
     }
 
-    updateVolunteerStatus(id, parsed.data.isActive, parsed.data.isApproved);
+    if (id === supporter.id && (!parsed.data.isActive || !parsed.data.isApproved)) {
+      return NextResponse.json({ error: "You cannot suspend or revoke approval for your own administrator account." }, { status: 400 });
+    }
+    if (!updateVolunteerStatus(id, parsed.data.isActive, parsed.data.isApproved)) {
+      return NextResponse.json({ error: "Volunteer not found" }, { status: 404 });
+    }
     logAdminAudit(supporter.id, "UPDATE_VOLUNTEER_STATUS", "volunteer", id, `Active: ${parsed.data.isActive}, Approved: ${parsed.data.isApproved}`);
 
     return NextResponse.json({ ok: true });

@@ -22,7 +22,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invalid status parameters" }, { status: 400 });
     }
 
-    updateVolunteerApplicationStatus(id, parsed.data.status, parsed.data.notes);
+    if (!updateVolunteerApplicationStatus(id, parsed.data.status, parsed.data.notes)) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    }
     logAdminAudit(supporter.id, "UPDATE_APPLICATION", "application", id, `Status set to ${parsed.data.status}`);
 
     return NextResponse.json({ ok: true });

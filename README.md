@@ -150,8 +150,18 @@ npm test
 
 - Home now follows the supplied sunrise/lavender reference, with topic links that preselect the chat topic.
 - `/chat` supports a topic choice or the visitor's own words, with bounded polling, recoverable network errors, independent tab sessions, and a scrollable message history.
-- `/donate` sends visitors directly to https://helpapeksha.com/donate-to-us/ . Hithata Idak does not collect payments or retain a share. The donation page links to the hospital's current instructions instead of storing bank details locally.
+- `/donate` explains voluntary support for Hithata Idak. Its WhatsApp link asks the team for current donation details using the configured support number; it opens a conversation and does not take a payment. No bank account, card form, tax benefit, or allocation guarantee is invented. Chat access remains free regardless of whether a visitor gives.
 - For optional WhatsApp support, set `NEXT_PUBLIC_WHATSAPP_NUMBER` in `.env.local` to the real support number in international format (country code, no leading local zero). Restart the development server after changing it and rebuild for production. With no configured number, the interface explains that web chat is available. Opening WhatsApp shares the visitor's WhatsApp phone number with the support account; conversation contents are not forwarded automatically.
 - Supporter availability is based on recent portal presence. An open supporter portal refreshes its presence; stale presence expires after 90 seconds. Never assume a reply is immediate.
 - `npm test` runs isolated in-memory security/system checks. With a local development server running, `npx tsx tests/chat-api-suite.ts` verifies visitor/supporter messaging, per-tab authorization, typing, recovery, closure, and deletion. It creates and cleans up only its own test conversations.
 - `public/images/ATTRIBUTION.md` records the official hospital photo source; `public/images/GENERATION.md` records the generated landscape prompt.
+
+## Admin workflow verification (2026-11-04)
+
+The portal includes working conversation assignment/reply controls, incident and volunteer application review with notes, volunteer activation/approval controls, feedback, settings, privacy requests, and audit history. Account suspension/revocation invalidates existing sessions. Application approval and creating a volunteer login remain separate actions.
+
+Implemented authentication is email/password. MFA and self-service password recovery are not implemented. Retention days are a saved policy value; scheduled automatic cleanup is not configured. Process requested deletions through the portal.
+
+After a production build, run `npx tsx tests/admin-api-suite.ts` for nine isolated HTTP workflow checks. The suite starts its own temporary server with an in-memory database and does not change live records.
+
+The short English introduction video and subtitles are in `output/video/`. Readability screenshots are in `output/qa/`.

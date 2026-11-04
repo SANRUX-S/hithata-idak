@@ -15,6 +15,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ ticketR
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
+    if (supporter.role === "supporter" && ticket.assigned_volunteer_id !== supporter.id) {
+      return NextResponse.json({ error: "You can only close conversations assigned to you." }, { status: 403 });
+    }
     closeTicket(ticket.id, "supporter");
     logAdminAudit(supporter.id, "CLOSE_TICKET", "ticket", ticket.id, "Conversation marked closed by supporter");
 

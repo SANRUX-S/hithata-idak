@@ -1,7 +1,10 @@
-// Direct destination: National Cancer Institute Sri Lanka Development Committee.
-// Verified against its published donation instructions; payment details stay there
-// so donors always see the institution's current information.
-export const officialDonationUrl = "https://helpapeksha.com/donate-to-us/";
-export const hospitalWebsiteUrl = "https://www.ncisl.health.gov.lk/";
-export const donationProjectsUrl = "https://helpapeksha.com/projects/";
+import { whatsappUrl } from "@/lib/site-config";
 
+// This link coordinates donations with the Hithata Idak team; it is not a
+// payment link and does not include a visitor's private conversation content.
+export const donationRequestMessage =
+  "Hello Hithata Idak, I would like to support your work. Could you share your donation details?";
+
+export const donationContactUrl = whatsappUrl
+  ? `${whatsappUrl}?text=${encodeURIComponent(donationRequestMessage)}`
+  : null;
