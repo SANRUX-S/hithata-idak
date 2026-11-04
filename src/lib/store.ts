@@ -526,6 +526,15 @@ export async function setSafetyFlag(ticketId: string, isFlagged: boolean, notes?
   `, [isFlagged ? 1 : 0, notes || null, now, ticketId]);
 }
 
+export async function updateTicketInternalNotes(ticketId: string, notes: string): Promise<void> {
+  const now = new Date().toISOString();
+  await dbAdapter.run(`
+    UPDATE support_tickets 
+    SET safety_notes = ?, updated_at = ?
+    WHERE id = ?
+  `, [notes, now, ticketId]);
+}
+
 export async function submitFeedback(ticketId: string, rating: number, text?: string): Promise<void> {
   await dbAdapter.run(`
     UPDATE support_tickets 

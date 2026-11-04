@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HeartHandshake, Menu, X } from "lucide-react";
+import { QuickExitButton } from "@/components/QuickExitButton";
 
 const navLinks = [
   { href: "/", label: "Home" }, { href: "/chat", label: "Start Chat" },
@@ -46,7 +47,14 @@ export function Navbar() {
       <div className="home-container nav-inner">
         <Link href="/" className="nav-brand" aria-label="Hithata Idak home"><span className="brand-mark"><HeartHandshake size={25} strokeWidth={1.6} /></span><span><span className="brand-name">Hithata Idak <span className="brand-sinhala font-sinhala">හිතට ඉඩක්</span></span><span className="brand-tagline">A safe place to talk</span></span></Link>
         <nav className="desktop-nav" aria-label="Main navigation">{navLinks.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined} className={`${pathname === link.href ? "nav-active" : ""} ${link.href === "/donate" ? "nav-donate" : ""}`}>{link.label}</Link>)}</nav>
-        <div className="nav-actions"><span className="nav-status" title={availability?.operatingHours}><span className={`status-dot ${availability?.status === "available" ? "status-online" : availability?.status === "busy" ? "status-busy" : ""}`} />{statusLabel}</span><Link href="/chat" className="nav-talk">Let’s talk</Link></div>
+        <div className="nav-actions">
+          <span className="nav-status" title={availability?.operatingHours}>
+            <span className={`status-dot ${availability?.status === "available" ? "status-online" : availability?.status === "busy" ? "status-busy" : ""}`} />
+            {statusLabel}
+          </span>
+          <Link href="/chat" className="nav-talk">Let’s talk</Link>
+          <QuickExitButton />
+        </div>
         <button type="button" className="mobile-menu-button" onClick={() => setMenuPath(mobileMenuOpen ? null : pathname)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="mobile-navigation">{mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}</button>
       </div>
       {mobileMenuOpen && <nav id="mobile-navigation" className="mobile-navigation" aria-label="Mobile navigation">{navLinks.map(link => <Link key={link.href} href={link.href} onClick={() => setMenuPath(null)} aria-current={pathname === link.href ? "page" : undefined} className={pathname === link.href ? "nav-active" : ""}>{link.label}</Link>)}<p><span className={`status-dot ${availability?.status === "available" ? "status-online" : ""}`} />{statusLabel}</p></nav>}

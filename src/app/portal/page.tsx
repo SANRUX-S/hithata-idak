@@ -26,6 +26,7 @@ import {
   BarChart3,
   Sparkles,
   LifeBuoy,
+  FileText,
 } from "lucide-react";
 import { ApplicationReview, IncidentReview, VolunteerStatusControls, saveAdminAction } from "@/components/AdminControls";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
@@ -76,6 +77,10 @@ export default function PortalDashboard() {
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [chatError, setChatError] = useState("");
   const [showGuidanceDrawer, setShowGuidanceDrawer] = useState(false);
+  const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+  const [handoverNotes, setHandoverNotes] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [notesSavedMsg, setNotesSavedMsg] = useState("");
 
   // Supervisor / Admin Data
   const [privacyRequests, setPrivacyRequests] = useState<PrivacyRequest[]>([]);
@@ -195,6 +200,9 @@ export default function PortalDashboard() {
         ticketFailuresRef.current = 0;
         activeTicketRef.current = data.ticket;
         setActiveTicket(data.ticket);
+        if (!showNotesDrawer) {
+          setHandoverNotes(data.ticket.safety_notes || "");
+        }
         
         const newMsgs: ConversationMessage[] = data.messages || [];
         if (newMsgs.length > activeMessagesCountRef.current && activeMessagesCountRef.current > 0) {
@@ -423,6 +431,31 @@ export default function PortalDashboard() {
     const notes = prompt("Enter safety assessment or supervisor handover notes:");
     if (notes === null) return;
     await handleTicketAction("flag", { isSafetyFlagged: newSafety, notes });
+  };
+
+  // Save Shift Handover Notes
+  const handleSaveNotes = async () => {
+    if (!activeTicket) return;
+    setIsSavingNotes(true);
+    setNotesSavedMsg("");
+    try {
+      const res = await fetch(`/api/portal/tickets/${activeTicket.ticket_ref}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getSupporterHeaders() },
+        body: JSON.stringify({ notes: handoverNotes }),
+      });
+      if (res.ok) {
+        setNotesSavedMsg("Handover notes saved.");
+        setActiveTicket((prev) => prev ? { ...prev, safety_notes: handoverNotes } : null);
+        setTimeout(() => setNotesSavedMsg(""), 3000);
+      } else {
+        setNotesSavedMsg("Failed to save notes.");
+      }
+    } catch {
+      setNotesSavedMsg("Connection error saving notes.");
+    } finally {
+      setIsSavingNotes(false);
+    }
   };
 
   // Process Privacy Deletion
@@ -778,6 +811,7 @@ export default function PortalDashboard() {
                           setVisitorTyping({ isTyping: false, name: "" });
                           setReplyText("");
                           setChatError("");
+                          setHandoverNotes(t.safety_notes || "");
                           setSelectedTicketRef(t.ticket_ref);
                         }}
                         className={`p-4 rounded-2xl border cursor-pointer transition-all ${isSelected
@@ -904,6 +938,20 @@ export default function PortalDashboard() {
 
                       <button
                         type="button"
+                        onClick={() => setShowNotesDrawer(!showNotesDrawer)}
+                        className={`px-3 py-1.5 rounded-xl border text-sm font-semibold flex items-center gap-1.5 transition-colors ${
+                          showNotesDrawer
+                            ? "bg-amber-600 text-white border-amber-600"
+                            : "border-[#D4C7E8] bg-[#FAF9F7] text-[#25234A] hover:bg-[#EDE7F6]"
+                        }`}
+                        title="Supporter shift handover notes"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Handover Notes</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => setShowGuidanceDrawer(!showGuidanceDrawer)}
                         className="px-3 py-1.5 rounded-xl border border-[#D4C7E8] bg-[#FAF9F7] text-[#25234A] font-semibold hover:bg-[#EDE7F6]"
                       >
@@ -922,6 +970,45 @@ export default function PortalDashboard() {
                       )}
                     </div>
                   </div>
+
+                  {/* Supporter Shift Handover Notes Drawer */}
+                  {showNotesDrawer && (
+                    <div className="p-4 bg-amber-50/70 border-b border-amber-200 text-sm space-y-3 animate-fadeIn">
+                      <div className="flex items-center justify-between font-bold text-[#25234A]">
+                        <span className="flex items-center gap-1.5 text-amber-950 font-bold">
+                          <Lock className="w-4 h-4 text-amber-700" />
+                          <span>Supporter Shift Handover Notes (Confidential)</span>
+                        </span>
+                        <span className="text-[11px] font-normal text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                          Never visible to visitor
+                        </span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={handoverNotes}
+                        onChange={(e) => setHandoverNotes(e.target.value)}
+                        placeholder="Record brief continuity notes for the next shift supporter (e.g. key stressors identified, grounding techniques attempted, risk observations)..."
+                        className="w-full p-3 rounded-xl border border-amber-300 bg-white text-xs text-[#25234A] focus:border-amber-600 focus:ring-1 focus:ring-amber-500"
+                      />
+                      <div className="flex items-center justify-between">
+                        {notesSavedMsg ? (
+                          <span className="text-xs font-semibold text-emerald-800">{notesSavedMsg}</span>
+                        ) : (
+                          <span className="text-[11px] text-amber-800">
+                            Saves to ticket metadata for peer review during shift transitions.
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleSaveNotes}
+                          disabled={isSavingNotes}
+                          className="px-4 py-1.5 rounded-xl bg-[#25234A] hover:bg-[#383466] text-white text-xs font-bold transition-colors disabled:opacity-50"
+                        >
+                          {isSavingNotes ? "Saving..." : "Save Shift Note"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Optional Empathetic Prompts Drawer */}
                   {showGuidanceDrawer && (

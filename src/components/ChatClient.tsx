@@ -19,12 +19,15 @@ import {
   VolumeX,
   Sparkles,
   Type,
+  Download,
 } from "lucide-react";
 import { SupportTicket, ConversationMessage, SystemAvailability } from "@/lib/types";
 import { conversationTopics } from "@/lib/topics";
 import { getWhatsAppHref } from "@/lib/site-config";
 import { soundManager } from "@/lib/sound";
 import { transliterateSinglishToSinhala } from "@/lib/singlish";
+import { GroundingToolsModal } from "@/components/GroundingToolsModal";
+import { QuickExitButton } from "@/components/QuickExitButton";
 
 const SESSION_KEY = "hid-chat-session-v2";
 type ChatSession = { reference: string; token: string };
@@ -145,6 +148,61 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
   const [actionError, setActionError] = useState("");
   const [isSavingFeedback, setIsSavingFeedback] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [showGroundingModal, setShowGroundingModal] = useState(false);
+
+  const handleDownloadCopingKit = () => {
+    const content = `=====================================================
+HITHATA IDAK (හිතට ඉඩක්) — SAFE COPING KIT & HELPLINES
+=====================================================
+Ticket Reference: ${ticket?.ticket_ref || "Anonymous"}
+Date: ${new Date().toLocaleDateString()}
+Status: Confidential Self-Care Anchor
+
+EMERGENCY MENTAL HEALTH HELPLINES (SRI LANKA):
+-----------------------------------------------------
+1. National Mental Health Helpline (NIMH Angoda):
+   Phone: 1926 (Toll-Free, 24/7, Sinhala, Tamil, English)
+
+2. Sumithrayo Befriending Service:
+   Phone: 011 269 2909 / 011 269 6666 (Daily 9:00 AM - 8:00 PM)
+   Address: 60 Horton Place, Colombo 07
+
+3. CCCline (Courage Compassion Commitment):
+   Phone: 1333 (Toll-Free, 24/7 Telephone Befriending)
+
+4. Shanthi Maargam (Adolescent & Youth Safe Space):
+   Phone: 071 763 9898
+
+EVIDENCE-INFORMED GROUNDING PRACTICES:
+-----------------------------------------------------
+1. The 4-7-8 Deep Breathing Rhythm:
+   - Inhale gently through your nose for 4 counts.
+   - Hold your breath gently for 7 counts.
+   - Exhale slowly and completely through your mouth for 8 counts.
+   - Repeat 4 times whenever your nervous system feels overwhelmed.
+
+2. The 5-4-3-2-1 Sensory Grounding Technique:
+   - Notice 5 things you can SEE around you.
+   - Notice 4 things you can physically TOUCH.
+   - Notice 3 distinct sounds you can HEAR.
+   - Notice 2 scents you can notice or SMELL.
+   - Remind yourself of 1 core TRUTH:
+     "I am safe in this moment. These heavy feelings are temporary. I do not have to carry everything alone."
+
+=====================================================
+Preserve this safely. You are valued and never truly alone.
+Website: https://hithataidak.vercel.app`;
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Hithata-Idak-Coping-Kit-${ticket?.ticket_ref || "Safe"}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // Auto-scroll ref
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -818,6 +876,31 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                   </button>
                 </div>
 
+                {/* Grounding & Calming Tools Trigger */}
+                <button
+                  type="button"
+                  onClick={() => setShowGroundingModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition-all shadow-2xs"
+                  title="Open 4-7-8 Breathing & 5-4-3-2-1 Sensory Grounding Exercises"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline">Breathe & Calm</span>
+                  <span className="sm:hidden">Calm</span>
+                </button>
+
+                {/* Download Safe Coping Kit */}
+                <button
+                  type="button"
+                  onClick={handleDownloadCopingKit}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#E8E5DF] bg-white text-[#5B5875] hover:text-[#25234A] hover:bg-[#FAF9F7] text-xs font-semibold transition-all shadow-2xs"
+                  title="Download Coping Kit & Emergency Helplines"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Coping Kit</span>
+                </button>
+
+                <QuickExitButton />
+
                 {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" title="Chat in WhatsApp, then use its call button. Your phone number is shared; website messages stay here." className="inline-flex items-center gap-1 rounded-xl border border-[#dce9df] bg-[#f4f9f5] px-2.5 py-1.5 text-sm font-semibold text-[#3B6B4A]"><MessageCircle className="size-3.5" /><span>WhatsApp</span><ExternalLink className="size-3" /></a>}
                 {/* Status Indicator */}
                 <div className="text-sm font-semibold px-3 py-1 rounded-full border bg-white shadow-2xs">
@@ -1218,6 +1301,12 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
             </div>
           </ChatModal>
         )}
+
+        {/* Interactive 4-7-8 Breathing & Sensory Grounding Modal */}
+        <GroundingToolsModal
+          isOpen={showGroundingModal}
+          onClose={() => setShowGroundingModal(false)}
+        />
       </div>
     </div>
   );

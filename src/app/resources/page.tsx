@@ -8,12 +8,20 @@ import {
   PhoneCall,
   Search,
   AlertCircle,
+  Sparkles,
+  MapPin,
+  Clock,
+  Building2,
 } from "lucide-react";
+import { SRI_LANKA_DISTRICTS } from "@/data/sriLankaDistricts";
+import { GroundingToolsModal } from "@/components/GroundingToolsModal";
 
 export default function HelpAndResourcesPage() {
   const [selectedArticleIndex, setSelectedArticleIndex] = useState<number | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showGroundingModal, setShowGroundingModal] = useState(false);
+  const [selectedDistrict, setSelectedDistrict] = useState("Colombo");
 
   // Feedback form state
   const [feedbackType, setFeedbackType] = useState("general");
@@ -315,6 +323,29 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
         </div>
       </section>
 
+      {/* INTERACTIVE CALMING & GROUNDING BANNER */}
+      <section className="py-6 bg-gradient-to-r from-[#EDE7F6] via-white to-[#EDE7F6] border-b border-[#e5e1db]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-center sm:text-left">
+            <div className="w-11 h-11 rounded-2xl bg-[#25234A] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Sparkles className="w-6 h-6 text-amber-300" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#25234A]">Feel Overwhelmed Right Now? (ක්ෂණික මනෝ සුව අභ්‍යාස)</h3>
+              <p className="text-xs text-[#5B5875]">Try our guided 4-7-8 breathing pacer or 5-4-3-2-1 sensory grounding exercise right on your screen.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowGroundingModal(true)}
+            className="px-5 py-2.5 rounded-2xl bg-[#25234A] hover:bg-[#383466] text-white font-bold text-xs flex items-center gap-2 shadow-xs shrink-0 transition-transform active:scale-95"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>Practice Calming Exercise</span>
+          </button>
+        </div>
+      </section>
+
       {/* VERIFIED CRISIS DIRECTORY */}
       <section className="py-12 bg-white border-b border-[#e5e1db]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -354,6 +385,90 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
                   >
                     <PhoneCall className="w-4 h-4 text-emerald-700" />
                     <span>{dir.number}</span>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SRI LANKA DISTRICT-WISE MENTAL HEALTH DIRECTORY */}
+      <section className="py-16 bg-[#FAF9F7] border-b border-[#e5e1db]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#383466] bg-[#EDE7F6] px-3 py-1 rounded-full">
+                Regional Care Network
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#3c3654] mt-2">
+                Sri Lanka District Mental Health Centers (දිස්ත්‍රික් මධ්‍යස්ථාන)
+              </h2>
+              <p className="text-sm text-[#655f6a] mt-1 max-w-xl">
+                Find free government hospital psychiatric OPD clinics, community counseling units, and local befriending branches in your district.
+              </p>
+            </div>
+          </div>
+
+          {/* District Selector Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            {SRI_LANKA_DISTRICTS.map((d) => (
+              <button
+                key={d.district}
+                type="button"
+                onClick={() => setSelectedDistrict(d.district)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  selectedDistrict === d.district
+                    ? "bg-[#25234A] text-white shadow-xs"
+                    : "bg-white text-[#5B5875] border border-[#E8E5DF] hover:bg-[#EDE7F6]"
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                <span>{d.district} ({d.districtSi})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Centers Grid for Selected District */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {(SRI_LANKA_DISTRICTS.find((d) => d.district === selectedDistrict) || SRI_LANKA_DISTRICTS[0]).centers.map((center, idx) => (
+              <div
+                key={idx}
+                className="p-5 rounded-2xl bg-white border border-[#E8E5DF] hover:border-[#D4C7E8] transition-all flex flex-col justify-between space-y-4 shadow-2xs"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FAF9F7] border border-[#E8E5DF] text-[#383466]">
+                      {center.type}
+                    </span>
+                    {center.is24x7 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        24/7 Available
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base font-bold text-[#25234A] leading-snug">{center.name}</h3>
+                  <div className="text-xs font-sinhala text-[#5B5875]">{center.nameSi}</div>
+                  <div className="text-xs text-[#5B5875] space-y-1 pt-1">
+                    <div className="flex items-start gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <span>{center.address}</span>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <span>{center.hours}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-[#5B5875] italic pt-1">{center.notes}</p>
+                </div>
+
+                <div className="pt-3 border-t border-[#E8E5DF]/70">
+                  <a
+                    href={`tel:${center.phone.split("/")[0].trim().replace(/\s/g, "")}`}
+                    className="inline-flex items-center gap-2 text-xs font-bold text-[#25234A] hover:text-[#383466]"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>{center.phone}</span>
                   </a>
                 </div>
               </div>
@@ -640,6 +755,12 @@ Start small. Reach out to one acquaintance with an authentic inquiry: *"I was th
           </div>
         </div>
       </section>
+
+      {/* Interactive Grounding Tools Modal */}
+      <GroundingToolsModal
+        isOpen={showGroundingModal}
+        onClose={() => setShowGroundingModal(false)}
+      />
     </div>
   );
 }

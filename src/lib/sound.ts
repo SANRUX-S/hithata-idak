@@ -119,6 +119,31 @@ class SoundManager {
   }
 
   /**
+   * Deep, warm singing bowl chime for breathing transitions (432 Hz).
+   */
+  public playBowlChime(): void {
+    if (this.isMuted) return;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(432, now); // Natural healing frequency
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 2.2);
+    } catch {
+      // Fails silently
+    }
+  }
+
+  /**
    * Request browser desktop notification permission
    */
   public async requestNotificationPermission(): Promise<boolean> {
