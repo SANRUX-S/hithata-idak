@@ -733,3 +733,146 @@ export async function logAdminAudit(volunteerId: string | null, action: string, 
 export async function listAdminAuditEvents(limit = 50): Promise<AdminAuditEvent[]> {
   return queryAll<AdminAuditEvent>("SELECT * FROM admin_audit_events ORDER BY created_at DESC LIMIT ?", limit);
 }
+
+// ==========================================
+// PRIVACY-PRESERVING AGGREGATE ANALYTICS
+// ==========================================
+
+export interface PlatformAnalytics {
+  totalTickets: number;
+  activeTickets: number;
+  waitingTickets: number;
+  closedTickets: number;
+  languageDistribution: { si: number; en: number };
+  topicDistribution: { topic: string; count: number }[];
+  feedbackStats: {
+    averageRating: number;
+    totalRatings: number;
+    distribution: Record<number, number>;
+  };
+  peakHoursDistribution: { hour: number; label: string; count: number }[];
+  totalVolunteers: number;
+  activeVolunteers: number;
+  totalApplications: number;
+  totalIncidents: number;
+}
+
+export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
+  const allTickets = await queryAll<{
+    id: string;
+    status: string;
+    preferred_language: string;
+    topic: string | null;
+    feedback_rating: number | null;
+    created_at: string;
+  }>("SELECT id, status, preferred_language, topic, feedback_rating, created_at FROM support_tickets");
+
+  const totalTickets = allTickets.length;
+  let activeTickets = 0;
+  let waitingTickets = 0;
+  let closedTickets = 0;
+  let siLang = 0;
+  let enLang = 0;
+  const topicCounts: Record<string, number> = {};
+  const hourCounts: Record<number, number> = {};
+  const ratingDist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let ratingSum = 0;
+  let ratedCount = 0;
+
+  for (let h = 0; h < 24; h++) {
+    hourCounts[h] = 0;
+  }
+
+  for (const t of allTickets) {
+    if (t.status === "active" || t.status === "assigned" || t.status === "awaiting_reply") activeTickets++;
+    else if (t.status === "waiting") waitingTickets++;
+    else if (t.status === "closed") closedTickets++;
+
+    if (t.preferred_language === "si") siLang++;
+    else enLang++;
+
+    const topicKey = t.topic?.trim() || "General / Other";
+    topicCounts[topicKey] = (topicCounts[topicKey] || 0) + 1;
+
+    if (t.feedback_rating && t.feedback_rating >= 1 && t.feedback_rating <= 5) {
+      ratingDist[t.feedback_rating] = (ratingDist[t.feedback_rating] || 0) + 1;
+      ratingSum += t.feedback_rating;
+      ratedCount++;
+    }
+
+    try {
+      const dt = new Date(t.created_at);
+      // Convert to Sri Lanka Time (UTC+5:30)
+      const istHour = (dt.getUTCHours() + 5 + (dt.getUTCMinutes() + 30 >= 60 ? 1 : 0)) % 24;
+      hourCounts[istHour] = (hourCounts[istHour] || 0) + 1;
+    } catch {
+      // Ignore date parsing anomalies
+    }
+  }
+
+  const topicDistribution = Object.entries(topicCounts)
+    .map(([topic, count]) => ({ topic, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const peakHoursDistribution = Object.entries(hourCounts).map(([h, count]) => {
+    const hourNum = Number(h);
+    const suffix = hourNum >= 12 ? "PM" : "AM";
+    const displayH = hourNum % 12 === 0 ? 12 : hourNum % 12;
+    return {
+      hour: hourNum,
+      label: `${displayH} ${suffix}`,
+      count,
+    };
+  });
+
+  const [volunteers, applications, incidents] = await Promise.all([
+    queryAll<{ is_active: number }>("SELECT is_active FROM volunteers"),
+    queryAll<{ id: string }>("SELECT id FROM volunteer_applications"),
+    queryAll<{ id: string }>("SELECT id FROM incident_reports"),
+  ]);
+
+  return {
+    totalTickets,
+    activeTickets,
+    waitingTickets,
+    closedTickets,
+    languageDistribution: { si: siLang, en: enLang },
+    topicDistribution,
+    feedbackStats: {
+      averageRating: ratedCount > 0 ? Number((ratingSum / ratedCount).toFixed(1)) : 5.0,
+      totalRatings: ratedCount,
+      distribution: ratingDist,
+    },
+    peakHoursDistribution,
+    totalVolunteers: volunteers.length,
+    activeVolunteers: volunteers.filter((v) => Number(v.is_active) === 1).length,
+    totalApplications: applications.length,
+    totalIncidents: incidents.length,
+  };
+}
+
+// ==========================================
+// AUTOMATED 30-DAY DATA RETENTION CLEANUP
+// ==========================================
+
+export async function purgeOldClosedTickets(retentionDays = 30): Promise<{ purgedCount: number }> {
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
+
+  const oldTickets = await queryAll<{ id: string }>(`
+    SELECT id FROM support_tickets 
+    WHERE status = 'closed' AND closed_at IS NOT NULL AND closed_at < ?
+  `, cutoffDate);
+
+  if (!oldTickets.length) return { purgedCount: 0 };
+
+  for (const t of oldTickets) {
+    await dbAdapter.run("DELETE FROM conversation_messages WHERE ticket_id = ?", [t.id]);
+    await dbAdapter.run("DELETE FROM ticket_access_credentials WHERE ticket_id = ?", [t.id]);
+    await dbAdapter.run("DELETE FROM ticket_assignments WHERE ticket_id = ?", [t.id]);
+    await dbAdapter.run("DELETE FROM support_tickets WHERE id = ?", [t.id]);
+  }
+
+  await logAdminAudit(null, "AUTOMATED_RETENTION_CLEANUP", "system", "all", `Purged ${oldTickets.length} closed conversations older than ${retentionDays} days.`);
+
+  return { purgedCount: oldTickets.length };
+}

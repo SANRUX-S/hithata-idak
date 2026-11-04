@@ -15,10 +15,16 @@ import {
   Heart,
   ExternalLink,
   MessageCircle,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  Type,
 } from "lucide-react";
 import { SupportTicket, ConversationMessage, SystemAvailability } from "@/lib/types";
 import { conversationTopics } from "@/lib/topics";
 import { getWhatsAppHref } from "@/lib/site-config";
+import { soundManager } from "@/lib/sound";
+import { transliterateSinglishToSinhala } from "@/lib/singlish";
 
 const SESSION_KEY = "hid-chat-session-v2";
 type ChatSession = { reference: string; token: string };
@@ -119,6 +125,9 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
   const [connectionError, setConnectionError] = useState("");
   const [pollVersion, setPollVersion] = useState(0);
   const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
+  const [isMuted, setIsMuted] = useState(soundManager.getMuted());
+  const [singlishAuto, setSinglishAuto] = useState(false);
   const [otherPartyTyping, setOtherPartyTyping] = useState<{ isTyping: boolean; name: string }>({
     isTyping: false,
     name: "",
@@ -214,6 +223,15 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
         if (controller.signal.aborted) return;
         const incomingId = data.messages.at(-1)?.id;
         if (!stickToBottomRef.current && incomingId && incomingId !== lastReceivedMessageIdRef.current) setHasNewMessages(true);
+        if (incomingId && lastReceivedMessageIdRef.current && incomingId !== lastReceivedMessageIdRef.current) {
+          const lastMsg = data.messages.at(-1);
+          if (lastMsg && (lastMsg.sender_role === "supporter" || lastMsg.sender_role === "system")) {
+            soundManager.playMessageChime();
+            soundManager.showDesktopNotification("Hithata Idak", {
+              body: `${lastMsg.sender_name}: ${lastMsg.content.slice(0, 80)}`,
+            });
+          }
+        }
         lastReceivedMessageIdRef.current = incomingId;
         setTicket((previous) => previous?.ticket_ref === data.ticket.ticket_ref && previous.status === "closed" ? { ...data.ticket, status: "closed" } : data.ticket);
         setMessages((previous) => mergeMessages(previous, data.messages));
@@ -240,7 +258,11 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
   // Handle typing indicator emission
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputText(e.target.value);
+    let val = e.target.value;
+    if (singlishAuto && val.endsWith(" ")) {
+      val = transliterateSinglishToSinhala(val);
+    }
+    setInputText(val);
     if (!ticket || conversationEnded) return;
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -748,6 +770,54 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
 
               {/* Status Badge & Control Buttons */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* Sound Toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMuted = !isMuted;
+                    setIsMuted(nextMuted);
+                    soundManager.setMuted(nextMuted);
+                    if (!nextMuted) {
+                      void soundManager.requestNotificationPermission();
+                      soundManager.playMessageChime();
+                    }
+                  }}
+                  className="p-2 rounded-xl border border-[#E8E5DF] bg-white text-[#5B5875] hover:text-[#25234A] hover:bg-[#FAF9F7] transition-all"
+                  title={isMuted ? "Unmute message chime sounds" : "Mute message sounds"}
+                  aria-label={isMuted ? "Unmute message chime sounds" : "Mute message sounds"}
+                >
+                  {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-emerald-600" />}
+                </button>
+
+                {/* Font Size Adjuster */}
+                <div className="hidden sm:flex items-center gap-1 bg-white border border-[#E8E5DF] rounded-xl px-2 py-1 text-xs text-[#5B5875]">
+                  <Type className="w-3.5 h-3.5 text-[#5B5875]" />
+                  <button
+                    type="button"
+                    onClick={() => setFontSize("sm")}
+                    className={`px-1.5 py-0.5 rounded transition-all ${fontSize === "sm" ? "bg-[#25234A] text-white font-bold" : "hover:text-[#25234A]"}`}
+                    title="Small text"
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFontSize("base")}
+                    className={`px-1.5 py-0.5 rounded transition-all ${fontSize === "base" ? "bg-[#25234A] text-white font-bold" : "hover:text-[#25234A]"}`}
+                    title="Default text"
+                  >
+                    A
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFontSize("lg")}
+                    className={`px-1.5 py-0.5 rounded transition-all ${fontSize === "lg" ? "bg-[#25234A] text-white font-bold" : "hover:text-[#25234A]"}`}
+                    title="Large text"
+                  >
+                    A+
+                  </button>
+                </div>
+
                 {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" title="Chat in WhatsApp, then use its call button. Your phone number is shared; website messages stay here." className="inline-flex items-center gap-1 rounded-xl border border-[#dce9df] bg-[#f4f9f5] px-2.5 py-1.5 text-sm font-semibold text-[#3B6B4A]"><MessageCircle className="size-3.5" /><span>WhatsApp</span><ExternalLink className="size-3" /></a>}
                 {/* Status Indicator */}
                 <div className="text-sm font-semibold px-3 py-1 rounded-full border bg-white shadow-2xs">
@@ -878,7 +948,9 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
                     </div>
 
                     <div
-                      className={`max-w-[85%] sm:max-w-lg px-4 py-3 rounded-2xl text-base leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-2xs ${
+                      className={`max-w-[85%] sm:max-w-lg px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-2xs ${
+                        fontSize === "sm" ? "text-sm" : fontSize === "lg" ? "text-lg" : "text-base"
+                      } ${
                         isVisitor
                           ? "bg-[#25234A] text-white rounded-br-xs"
                           : "bg-[#EDE7F6] text-[#25234A] rounded-bl-xs border border-[#D4C7E8]/70"
@@ -907,6 +979,37 @@ export default function ChatClient({ initialTopic = "" }: { initialTopic?: strin
               {!conversationEnded ? (
                 <form onSubmit={handleSendMessage} className="space-y-2">
                   {sendError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-base text-rose-800">{sendError}</p>}
+                  
+                  {/* Singlish & Language Helper Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-1 text-xs text-[#5B5875]">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSinglishAuto(!singlishAuto)}
+                        className={`px-2.5 py-1 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs ${
+                          singlishAuto
+                            ? "bg-[#25234A] text-white border-[#25234A]"
+                            : "bg-white text-[#5B5875] border-[#E8E5DF] hover:bg-[#EDE7F6] hover:text-[#25234A]"
+                        }`}
+                        title="Automatic phonetic Singlish to Sinhala converter"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{singlishAuto ? "සිංහල Auto: සක්‍රියයි" : "සිංග්ලිෂ් → සිංහල"}</span>
+                      </button>
+                      {inputText.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setInputText(transliterateSinglishToSinhala(inputText))}
+                          className="px-2.5 py-1 rounded-xl bg-white border border-[#E8E5DF] text-xs font-semibold text-[#25234A] hover:bg-[#EDE7F6] transition-all"
+                          title="Convert typed Singlish text to Sinhala Unicode"
+                        >
+                          Convert text now
+                        </button>
+                      )}
+                    </div>
+                    <span className="hidden sm:inline">Press Enter to send · Shift+Enter for new line</span>
+                  </div>
+
                   <div className="relative flex items-end gap-2">
                     <label htmlFor="chat-message" className="sr-only">Your message</label>
                     <textarea

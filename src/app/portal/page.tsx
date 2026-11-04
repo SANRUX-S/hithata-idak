@@ -21,8 +21,17 @@ import {
   Lock,
   Shield,
   Star,
+  Volume2,
+  VolumeX,
+  BarChart3,
+  Sparkles,
+  LifeBuoy,
 } from "lucide-react";
 import { ApplicationReview, IncidentReview, VolunteerStatusControls, saveAdminAction } from "@/components/AdminControls";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
+import { soundManager } from "@/lib/sound";
+import { CANNED_RESPONSES } from "@/lib/canned-responses";
+import { transliterateSinglishToSinhala } from "@/lib/singlish";
 import {
   Volunteer,
   SupportTicket,
@@ -33,6 +42,7 @@ import {
   AdminAuditEvent,
   UserFeedback,
 } from "@/lib/types";
+import { PlatformAnalytics } from "@/lib/store";
 
 function requestSignal(signal?: AbortSignal) {
   const timeout = AbortSignal.timeout(12000);
@@ -74,9 +84,15 @@ export default function PortalDashboard() {
   const [applications, setApplications] = useState<VolunteerApplication[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditEvent[]>([]);
   const [userFeedback, setUserFeedback] = useState<UserFeedback[]>([]);
+  const [analytics, setAnalytics] = useState<PlatformAnalytics | null>(null);
   const [adminError, setAdminError] = useState("");
   const [adminNotice, setAdminNotice] = useState("");
   const [pendingAction, setPendingAction] = useState("");
+  const [isMuted, setIsMuted] = useState(soundManager.getMuted());
+  const [supporterSinglishAuto, setSupporterSinglishAuto] = useState(false);
+  const [showCannedMenu, setShowCannedMenu] = useState(false);
+  const [isCleaningData, setIsCleaningData] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [platformSettings, setPlatformSettings] = useState({
     serviceStatus: "online",
     pilotMode: "true",
@@ -102,6 +118,8 @@ export default function PortalDashboard() {
   const sendingReplyRef = useRef(false);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const ticketFailuresRef = useRef(0);
+  const previousWaitingCountRef = useRef(0);
+  const activeMessagesCountRef = useRef(0);
 
   // 1. Authenticate Supporter Session
   const checkAuth = useCallback((signal?: AbortSignal) => {
@@ -138,7 +156,15 @@ export default function PortalDashboard() {
     return fetch("/api/portal/tickets", { cache: "no-store", headers: getSupporterHeaders(), signal: loadingSignal }).then(async (res) => {
       if (res.ok) {
         const data = await res.json();
-        if (!signal?.aborted) setTickets(data.tickets);
+        if (!signal?.aborted) {
+          const list: SupportTicket[] = data.tickets || [];
+          const waitingCount = list.filter((t) => t.status === "waiting").length;
+          if (waitingCount > previousWaitingCountRef.current && previousWaitingCountRef.current > 0) {
+            void soundManager.playTicketAlert();
+          }
+          previousWaitingCountRef.current = waitingCount;
+          setTickets(list);
+        }
       }
     }).catch((error: unknown) => {
       if (!signal?.aborted) console.error("Fetch tickets error", error);
@@ -169,7 +195,17 @@ export default function PortalDashboard() {
         ticketFailuresRef.current = 0;
         activeTicketRef.current = data.ticket;
         setActiveTicket(data.ticket);
-        setActiveMessages((previous) => data.messages.length >= previous.length ? data.messages : previous);
+        
+        const newMsgs: ConversationMessage[] = data.messages || [];
+        if (newMsgs.length > activeMessagesCountRef.current && activeMessagesCountRef.current > 0) {
+          const lastMsg = newMsgs[newMsgs.length - 1];
+          if (lastMsg && (lastMsg.sender_role === "visitor" || (lastMsg as unknown as { senderRole?: string }).senderRole === "visitor")) {
+            void soundManager.playMessageChime();
+          }
+        }
+        activeMessagesCountRef.current = newMsgs.length;
+
+        setActiveMessages((previous) => newMsgs.length >= previous.length ? newMsgs : previous);
         setVisitorTyping(data.typing || { isTyping: false, name: "" });
         setChatError("");
       } else {
@@ -228,6 +264,7 @@ export default function PortalDashboard() {
       });
     if (activeTab === "privacy") return load<{ requests: PrivacyRequest[] }>("/api/portal/admin/privacy-requests", (data) => setPrivacyRequests(data.requests));
     if (activeTab === "reports") return load<{ reports: IncidentReport[] }>("/api/portal/admin/incident-reports", (data) => setIncidentReports(data.reports));
+    if (activeTab === "analytics") return load<{ analytics: PlatformAnalytics }>("/api/portal/admin/analytics", (data) => setAnalytics(data.analytics));
     if (activeTab === "team") return load<{ volunteers: Volunteer[] }>("/api/portal/admin/volunteers", (data) => setVolunteers(data.volunteers));
     if (activeTab === "applications") return load<{ applications: VolunteerApplication[] }>("/api/portal/admin/applications", (data) => setApplications(data.applications));
     if (activeTab === "feedback") return load<{ feedback: UserFeedback[] }>("/api/portal/admin/feedback", (data) => setUserFeedback(data.feedback));
@@ -254,6 +291,29 @@ export default function PortalDashboard() {
     }
   };
 
+  // Run Automated 30-Day Data Shredder
+  const handleRunCleanup = async () => {
+    setIsCleaningData(true);
+    setCleanupResult(null);
+    try {
+      const res = await fetch("/api/portal/admin/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getSupporterHeaders() },
+        body: JSON.stringify({ retentionDays: 30 }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCleanupResult(`Successfully shredded ${data.purgedCount} expired conversations (older than 30 days) adhering to PDPA.`);
+      } else {
+        setCleanupResult(`Cleanup error: ${data.error || "Failed to shred data."}`);
+      }
+    } catch (err: unknown) {
+      setCleanupResult(err instanceof Error ? err.message : "Cleanup failed.");
+    } finally {
+      setIsCleaningData(false);
+    }
+  };
+
   // Logout
   const handleLogout = async () => {
     try {
@@ -265,7 +325,8 @@ export default function PortalDashboard() {
 
   // Supporter Typing Ping
   const handleReplyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setReplyText(e.target.value);
+    const val = e.target.value;
+    setReplyText(supporterSinglishAuto ? transliterateSinglishToSinhala(val) : val);
     if (!activeTicket || activeTicket.status === "closed") return;
 
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -501,6 +562,24 @@ export default function PortalDashboard() {
               </button>
             </div>
 
+            {/* Sound Mute/Unmute Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = soundManager.toggleMute();
+                setIsMuted(next);
+              }}
+              className={`p-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-1.5 ${
+                isMuted
+                  ? "bg-amber-900/40 text-amber-300 border-amber-600/50"
+                  : "bg-[#383466] text-white border-[#534D88] hover:bg-[#4a4580]"
+              }`}
+              title={isMuted ? "Unmute chimes & alerts" : "Mute chimes & alerts"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              <span className="hidden sm:inline text-xs">{isMuted ? "Muted" : "Sound On"}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleLogout}
@@ -543,6 +622,18 @@ export default function PortalDashboard() {
 
           {isSupervisorOrAdmin && (
             <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("analytics")}
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0 ${activeTab === "analytics"
+                    ? "bg-[#25234A] text-white shadow-xs"
+                    : "text-[#5B5875] hover:bg-[#FAF9F7]"
+                  }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Analytics & Impact</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setActiveTab("reports")}
@@ -930,6 +1021,94 @@ export default function PortalDashboard() {
                   <div className="p-4 bg-[#FAF9F7] border-t border-[#E8E5DF]">
                     {activeTicket.status !== "closed" ? (
                       <form onSubmit={handleSendReply} className="space-y-2">
+                        {/* Supporter Helper Toolbar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-1">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setShowCannedMenu(!showCannedMenu)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 shadow-2xs ${
+                                showCannedMenu
+                                  ? "bg-[#25234A] text-white border-[#25234A]"
+                                  : "bg-white border-[#D4C7E8] text-[#25234A] hover:bg-[#EDE7F6]"
+                              }`}
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Empathetic Templates</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const crisisText = "ඔබට හෝ ඔබ දන්නා කෙනෙකුට හදිසි මානසික සුව සහනයක් අවශ්‍ය නම්, කරුණාකර ජාතික මානසික සෞඛ්‍ය උපකාරක අංකය 1926 (නොමිලේ, 24/7) හෝ සුමිත්‍රයෝ 011 269 2909 අමතන්න. ඔබගේ ජීවිතය අපට වටිනවා.";
+                                setReplyText((prev) => prev ? `${prev}\n\n${crisisText}` : crisisText);
+                              }}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100 flex items-center gap-1.5 transition-colors shadow-2xs"
+                              title="Insert 1-Click 1926 and Sumithrayo Crisis Referral"
+                            >
+                              <LifeBuoy className="w-3.5 h-3.5 text-rose-600" />
+                              <span>1-Click 1926 Referral</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSupporterSinglishAuto(!supporterSinglishAuto)}
+                              className={`px-2 py-0.5 rounded-md text-xs font-medium border transition-colors ${
+                                supporterSinglishAuto
+                                  ? "bg-purple-100 border-purple-300 text-purple-900"
+                                  : "bg-white border-[#E8E5DF] text-[#5B5875]"
+                              }`}
+                            >
+                              සිංහල Auto: {supporterSinglishAuto ? "On" : "Off"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (replyText) setReplyText(transliterateSinglishToSinhala(replyText));
+                              }}
+                              className="px-2 py-0.5 rounded-md text-xs font-medium bg-white border border-[#E8E5DF] text-[#5B5875] hover:bg-[#EDE7F6] hover:text-[#25234A]"
+                            >
+                              Convert to Sinhala
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Canned Responses Dropdown Palette */}
+                        {showCannedMenu && (
+                          <div className="p-3 bg-white border border-[#D4C7E8] rounded-2xl shadow-sm space-y-2 mb-2 max-h-60 overflow-y-auto">
+                            <div className="flex items-center justify-between text-xs font-bold text-[#25234A] border-b border-[#E8E5DF] pb-1">
+                              <span>Choose Compassionate Response:</span>
+                              <button
+                                type="button"
+                                onClick={() => setShowCannedMenu(false)}
+                                className="text-[#5B5875] hover:text-rose-600 font-bold"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="space-y-1.5">
+                              {CANNED_RESPONSES.map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setReplyText((prev) => prev ? `${prev}\n\n${item.sinhalaText}` : item.sinhalaText);
+                                    setShowCannedMenu(false);
+                                  }}
+                                  className="w-full text-left p-2.5 rounded-xl border border-[#E8E5DF]/60 bg-[#FAF9F7] hover:bg-[#EDE7F6] hover:border-[#D4C7E8] transition-colors text-xs text-[#25234A]"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-[#25234A]">{item.title}</span>
+                                    <span className="text-[10px] text-[#5B5875] bg-white px-2 py-0.5 rounded-full border border-[#E8E5DF]">{item.categoryLabel}</span>
+                                  </div>
+                                  <div className="text-[#5B5875] text-[11px] mt-1 truncate">{item.sinhalaText}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex items-end gap-2">
                           <textarea
                             rows={3}
@@ -1048,6 +1227,18 @@ export default function PortalDashboard() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB: PRIVACY-PRESERVING ANALYTICS & IMPACT (SUPERVISOR / ADMIN) */}
+        {/* ============================================================== */}
+        {activeTab === "analytics" && isSupervisorOrAdmin && (
+          <div className="space-y-6 animate-fadeIn">
+            <AnalyticsDashboard
+              analytics={analytics}
+              onRefresh={() => { void fetchTabData(); }}
+            />
           </div>
         )}
 
@@ -1370,6 +1561,35 @@ export default function PortalDashboard() {
               </div>
               <button type="submit" disabled={Boolean(pendingAction)} className="rounded-xl bg-[#25234A] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{pendingAction === "settings" ? "Saving…" : "Save settings"}</button>
             </form>
+
+            {/* Automated 30-Day Data Retention Shredder (PDPA) */}
+            <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-[#25234A] flex items-center gap-2">
+                    <Trash2 className="w-5 h-5 text-rose-600" />
+                    <span>Automated 30-Day Data Shredder (PDPA Compliance)</span>
+                  </h3>
+                  <p className="text-sm text-[#5B5875] mt-1">
+                    Permanently purges closed conversations older than 30 days along with associated messages. Also configured for recurring server execution via <code className="bg-slate-100 px-1 py-0.5 rounded text-xs font-mono">/api/cron/cleanup</code>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRunCleanup}
+                  disabled={isCleaningData}
+                  className="px-5 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold flex items-center gap-2 shrink-0 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isCleaningData ? "Shredding Data..." : "Run 30-Day Shredder Now"}</span>
+                </button>
+              </div>
+              {cleanupResult && (
+                <div className={`p-3 rounded-xl text-sm ${cleanupResult.includes("error") ? "bg-red-50 text-red-800 border border-red-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>
+                  {cleanupResult}
+                </div>
+              )}
+            </div>
 
             {/* Audit Logs Table */}
             <div className="p-6 rounded-3xl bg-white border border-[#E8E5DF] shadow-xs space-y-3">
